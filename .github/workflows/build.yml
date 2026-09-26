@@ -33,14 +33,14 @@ jobs:
 
       - name: Publish Windows (.exe)
         run: >
-          dotnet publish Sbroglione.Desktop -c Release -r win-x64
+          dotnet publish FileToolbox.Desktop -c Release -r win-x64
           --self-contained -p:PublishSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
           -p:Version=${{ steps.version.outputs.value }}
 
       - name: Publish Linux (self-contained)
         run: >
-          dotnet publish Sbroglione.Desktop -c Release -r linux-x64
+          dotnet publish FileToolbox.Desktop -c Release -r linux-x64
           --self-contained -p:Version=${{ steps.version.outputs.value }}
 
       - name: Install ImageMagick
@@ -49,29 +49,29 @@ jobs:
       - name: Build AppImage
         run: |
           set -euo pipefail
-          APPDIR="Sbroglione.AppDir"
+          APPDIR="FileToolbox.AppDir"
           mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/applications" "$APPDIR/usr/share/pixmaps"
 
-          cp -r Sbroglione.Desktop/bin/Release/net10.0/linux-x64/publish/* "$APPDIR/usr/bin/"
-          chmod +x "$APPDIR/usr/bin/Sbroglione.Desktop"
+          cp -r FileToolbox.Desktop/bin/Release/net10.0/linux-x64/publish/* "$APPDIR/usr/bin/"
+          chmod +x "$APPDIR/usr/bin/FileToolbox.Desktop"
 
-          convert "Sbroglione/Assets/avalonia-logo.ico[0]" -resize 256x256 "$APPDIR/usr/share/pixmaps/Sbroglione.png"
-          cp "$APPDIR/usr/share/pixmaps/Sbroglione.png" "$APPDIR/Sbroglione.png"
+          convert "FileToolbox/Assets/avalonia-logo.ico[0]" -resize 256x256 "$APPDIR/usr/share/pixmaps/FileToolbox.png"
+          cp "$APPDIR/usr/share/pixmaps/FileToolbox.png" "$APPDIR/FileToolbox.png"
 
           {
           echo "[Desktop Entry]"
           echo "Type=Application"
-          echo "Name=Sbroglione"
-          echo "Exec=Sbroglione.Desktop"
-          echo "Icon=Sbroglione"
+          echo "Name=FileToolbox"
+          echo "Exec=FileToolbox.Desktop"
+          echo "Icon=FileToolbox"
           echo "Categories=Utility;"
-          } > "$APPDIR/usr/share/applications/Sbroglione.desktop"
-          cp "$APPDIR/usr/share/applications/Sbroglione.desktop" "$APPDIR/Sbroglione.desktop"
+          } > "$APPDIR/usr/share/applications/FileToolbox.desktop"
+          cp "$APPDIR/usr/share/applications/FileToolbox.desktop" "$APPDIR/FileToolbox.desktop"
 
           {
           echo '#!/bin/sh'
           echo 'HERE="$(dirname "$(readlink -f "$0")")"'
-          echo 'exec "$HERE/usr/bin/Sbroglione.Desktop" "$@"'
+          echo 'exec "$HERE/usr/bin/FileToolbox.Desktop" "$@"'
           } > "$APPDIR/AppRun"
           chmod +x "$APPDIR/AppRun"
 
@@ -82,27 +82,27 @@ jobs:
           # update the digest below after verifying the new build out-of-band.
           echo "b90f4a8b18967545fda78a445b27680a1642f1ef9488ced28b65398f2be7add2  appimagetool" | sha256sum -c -
           chmod +x appimagetool
-          ./appimagetool --appimage-extract-and-run "$APPDIR" Sbroglione-x86_64.AppImage
+          ./appimagetool --appimage-extract-and-run "$APPDIR" FileToolbox-x86_64.AppImage
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: Sbroglione-windows-x64
-          path: Sbroglione.Desktop/bin/Release/net10.0/win-x64/publish/Sbroglione.Desktop.exe
+          name: FileToolbox-windows-x64
+          path: FileToolbox.Desktop/bin/Release/net10.0/win-x64/publish/FileToolbox.Desktop.exe
 
       - name: Upload AppImage artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: Sbroglione-linux-x64
-          path: Sbroglione-x86_64.AppImage
+          name: FileToolbox-linux-x64
+          path: FileToolbox-x86_64.AppImage
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           files: |
-            Sbroglione.Desktop/bin/Release/net10.0/win-x64/publish/Sbroglione.Desktop.exe
-            Sbroglione-x86_64.AppImage
+            FileToolbox.Desktop/bin/Release/net10.0/win-x64/publish/FileToolbox.Desktop.exe
+            FileToolbox-x86_64.AppImage
 
   build-android:
     runs-on: ubuntu-latest
@@ -136,12 +136,12 @@ jobs:
 
       - name: Build Android APK
         run: >
-          dotnet build Sbroglione.Android/Sbroglione.Android.csproj -c Release
+          dotnet build FileToolbox.Android/FileToolbox.Android.csproj -c Release
           -f net10.0-android
           -p:ApplicationDisplayVersion=${{ steps.version.outputs.value }}
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: Sbroglione-android
-          path: Sbroglione.Android/bin/Release/net10.0-android/*-Signed.apk
+          name: FileToolbox-android
+          path: FileToolbox.Android/bin/Release/net10.0-android/*-Signed.apk

@@ -1,0 +1,29 @@
+using System;
+using System.Threading.Tasks;
+
+using FileToolbox.Services;
+using FileToolbox.Views;
+
+namespace FileToolbox.ViewModels;
+
+/// <summary>
+/// Apertura del dialog di input testo, condivisa tra le schede.
+/// <see cref="Override"/> permette ai test (senza UI) di simulare la risposta dell'utente.
+/// </summary>
+internal static class InputDialogHelper
+{
+    /// <summary>Solo per i test: se impostato, sostituisce il dialog reale. Ripristinare a null in Dispose.</summary>
+    internal static Func<string, string, string?, Task<string?>>? Override { get; set; }
+
+    public static async Task<string?> ShowAsync(string title, string message, string? initialText)
+    {
+        if (Override is not null)
+            return await Override(title, message, initialText);
+
+        // Senza host non c'è input: nessuna azione.
+        return await DialogPresenter.ShowAsync<InputDialogContent, string?>(
+            () => new InputDialog(),
+            () => new InputDialogContent(),
+            new InputDialogViewModel(title, message, initialText));
+    }
+}

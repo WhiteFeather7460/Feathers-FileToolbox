@@ -1,4 +1,4 @@
-# Sbroglione
+# FileToolbox
 
 Cross-platform desktop app (Avalonia UI, .NET 10) to explore, compare, and sync folders. Started as a dual-pane file explorer, it now includes bulk copy with checksum verification, directory comparison, automatic synchronization, duplicate finder, disk usage analysis, and access to remote FTP/SFTP servers.
 
@@ -16,11 +16,11 @@ The UI is organized into tabs:
 
 ## Plugins
 
-Sbroglione (desktop) can load third-party tab plugins at runtime, discovered from `~/.config/Sbroglione/plugins/`. Minimal plugin:
+FileToolbox (desktop) can load third-party tab plugins at runtime, discovered from `~/.config/Sbroglione/plugins/`. Minimal plugin:
 
 ```csharp
 using Avalonia.Controls;
-using Sbroglione.PluginContracts;
+using FileToolbox.PluginContracts;
 
 public sealed class MyTabPlugin : ITabPlugin
 {
@@ -61,15 +61,15 @@ Full contract, manifest fields, dependency resolution, failure modes, and versio
 ## Build
 
 ```bash
-dotnet build Sbroglione.sln
+dotnet build FileToolbox.sln
 ```
 
-`Sbroglione.Android` is excluded from the solution's build (`.Build.0`), so this command never touches it — build it separately (see [Android](#android)).
+`FileToolbox.Android` is excluded from the solution's build (`.Build.0`), so this command never touches it — build it separately (see [Android](#android)).
 
 ## Run
 
 ```bash
-dotnet run --project Sbroglione.Desktop
+dotnet run --project FileToolbox.Desktop
 ```
 
 ## Tests
@@ -78,7 +78,7 @@ dotnet run --project Sbroglione.Desktop
 dotnet test
 ```
 
-Tests (xunit) live in `Sbroglione.Tests`.
+Tests (xunit) live in `FileToolbox.Tests`.
 
 ## Distributable builds
 
@@ -86,14 +86,14 @@ Tests (xunit) live in `Sbroglione.Tests`.
 
 Self-contained executable (includes .NET runtime):
 ```bash
-dotnet publish Sbroglione.Desktop -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+dotnet publish FileToolbox.Desktop -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 ```
 
-Output: `Sbroglione.Desktop/bin/Release/net10.0/win-x64/publish/Sbroglione.Desktop.exe`
+Output: `FileToolbox.Desktop/bin/Release/net10.0/win-x64/publish/FileToolbox.Desktop.exe`
 
 Framework-dependent (requires .NET Runtime installed):
 ```bash
-dotnet publish Sbroglione.Desktop -c Release -r win-x64 -p:PublishSingleFile=true
+dotnet publish FileToolbox.Desktop -c Release -r win-x64 -p:PublishSingleFile=true
 ```
 
 ### Linux (.AppImage)
@@ -102,43 +102,43 @@ Prerequisites: `appimagetool` installed and `wget`/`curl`.
 
 ```bash
 # 1. Publish for Linux
-dotnet publish Sbroglione.Desktop -c Release -r linux-x64 --self-contained
+dotnet publish FileToolbox.Desktop -c Release -r linux-x64 --self-contained
 
 # 2. Prepare the AppImage structure
-APPDIR="Sbroglione.AppDir"
+APPDIR="FileToolbox.AppDir"
 mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/applications" "$APPDIR/usr/share/pixmaps"
 
 # 3. Copy the executable
-cp -r Sbroglione.Desktop/bin/Release/net10.0/linux-x64/publish/* "$APPDIR/usr/bin/"
+cp -r FileToolbox.Desktop/bin/Release/net10.0/linux-x64/publish/* "$APPDIR/usr/bin/"
 
 # 4. Create the desktop entry
-cat > "$APPDIR/usr/share/applications/Sbroglione.desktop" <<EOF
+cat > "$APPDIR/usr/share/applications/FileToolbox.desktop" <<EOF
 [Desktop Entry]
 Type=Application
-Name=Sbroglione
-Exec=Sbroglione.Desktop
-Icon=Sbroglione
+Name=FileToolbox
+Exec=FileToolbox.Desktop
+Icon=FileToolbox
 Categories=Utility;
 EOF
 
 # 5. Create the AppImage
-appimagetool "$APPDIR" "Sbroglione-x86_64.AppImage"
-chmod +x Sbroglione-x86_64.AppImage
+appimagetool "$APPDIR" "FileToolbox-x86_64.AppImage"
+chmod +x FileToolbox-x86_64.AppImage
 ```
 
-Output: `Sbroglione-x86_64.AppImage` (portable, directly executable)
+Output: `FileToolbox-x86_64.AppImage` (portable, directly executable)
 
 ### macOS (.app)
 
 ```bash
-dotnet publish Sbroglione.Desktop -c Release -r osx-x64 --self-contained
+dotnet publish FileToolbox.Desktop -c Release -r osx-x64 --self-contained
 ```
 
 Wrap the output in a `.app` bundle using Avalonia's official script (see docs).
 
 ## Android
 
-`Sbroglione.Android` (package `com.whitefeather.sbroglione`, min SDK 26 / target SDK 36) is a separate head project, excluded from `Sbroglione.sln`'s build — build and deploy it on its own.
+`FileToolbox.Android` (package `com.whitefeather.sbroglione`, min SDK 26 / target SDK 36) is a separate head project, excluded from `FileToolbox.sln`'s build — build and deploy it on its own.
 
 ### Setup
 
@@ -151,15 +151,15 @@ Also needs a JDK 17 and `ANDROID_HOME`/`JAVA_HOME` pointing at it and at your An
 ### Build (debug, for an emulator/device)
 
 ```bash
-dotnet build Sbroglione.Android/Sbroglione.Android.csproj -c Debug -f net10.0-android \
+dotnet build FileToolbox.Android/FileToolbox.Android.csproj -c Debug -f net10.0-android \
   -p:AndroidSdkDirectory="$ANDROID_HOME"
 ```
 
-Output: `Sbroglione.Android/bin/Debug/net10.0-android/com.whitefeather.sbroglione-Signed.apk`
+Output: `FileToolbox.Android/bin/Debug/net10.0-android/com.whitefeather.sbroglione-Signed.apk`
 
 > **Note:** a plain Debug build uses Fast Deployment (assemblies are pushed to the device separately from the APK by IDE tooling); installing that APK with a bare `adb install` crashes at startup with `No assemblies found ... Assuming this is part of Fast Deployment`. For a command-line `adb install` workflow, embed the assemblies into the APK instead:
 > ```bash
-> dotnet build Sbroglione.Android/Sbroglione.Android.csproj -c Debug -f net10.0-android \
+> dotnet build FileToolbox.Android/FileToolbox.Android.csproj -c Debug -f net10.0-android \
 >   -p:AndroidSdkDirectory="$ANDROID_HOME" \
 >   -p:EmbedAssembliesIntoApk=true -p:AndroidFastDeploymentType=None
 > ```
@@ -168,7 +168,7 @@ Output: `Sbroglione.Android/bin/Debug/net10.0-android/com.whitefeather.sbroglion
 
 ```bash
 adb devices  # confirm the target is listed as "device"
-adb install -r Sbroglione.Android/bin/Debug/net10.0-android/com.whitefeather.sbroglione-Signed.apk
+adb install -r FileToolbox.Android/bin/Debug/net10.0-android/com.whitefeather.sbroglione-Signed.apk
 adb shell monkey -p com.whitefeather.sbroglione -c android.intent.category.LAUNCHER 1
 ```
 
@@ -176,31 +176,31 @@ If you reinstall over a build that used Fast Deployment (or vice versa), uninsta
 
 ### First-run permission
 
-The app needs "All files access" (`MANAGE_EXTERNAL_STORAGE`) to browse arbitrary paths — Android doesn't grant this at install time, it must be enabled manually after first launch: Settings → Apps → Sbroglione → Permissions → "Allow management of all files".
+The app needs "All files access" (`MANAGE_EXTERNAL_STORAGE`) to browse arbitrary paths — Android doesn't grant this at install time, it must be enabled manually after first launch: Settings → Apps → FileToolbox → Permissions → "Allow management of all files".
 
 ### Release build (signed APK)
 
 ```bash
-dotnet build Sbroglione.Android/Sbroglione.Android.csproj -c Release -f net10.0-android \
+dotnet build FileToolbox.Android/FileToolbox.Android.csproj -c Release -f net10.0-android \
   -p:ApplicationDisplayVersion=1.0.0
 ```
 
-Output: `Sbroglione.Android/bin/Release/net10.0-android/com.whitefeather.sbroglione-Signed.apk`
+Output: `FileToolbox.Android/bin/Release/net10.0-android/com.whitefeather.sbroglione-Signed.apk`
 
 ## Project structure
 
 ```
-Sbroglione.sln            Solution (at repo root)
-Sbroglione/               Core project
+FileToolbox.sln            Solution (at repo root)
+FileToolbox/               Core project
   Models/                   Plain data (WatchRule, profiles, etc.)
   Services/                 Logic: file system, copy, checksum, FTP/SFTP, themes, watch folder
   ViewModels/               ReactiveUI (one ViewModel per view)
   Views/                    Avalonia XAML + code-behind
   Converters/               Value converters for binding
   Styles/                   Palette.axaml (theme-aware brushes) and Controls.axaml (class-based styles)
-Sbroglione.Desktop/       Desktop entry point (WinExe)
-Sbroglione.Android/       Android head project (excluded from Sbroglione.sln's build)
-Sbroglione.Tests/         xunit tests
+FileToolbox.Desktop/       Desktop entry point (WinExe)
+FileToolbox.Android/       Android head project (excluded from FileToolbox.sln's build)
+FileToolbox.Tests/         xunit tests
 ```
 
 Layering: `Views` → `ViewModels` → `Services` (static) → `Models`. No DI container: tab views create their own ViewModel in the constructor.

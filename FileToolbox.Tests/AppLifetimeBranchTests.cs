@@ -1,0 +1,97 @@
+using System;
+using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
+using System.Threading.Tasks;
+
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Headless.XUnit;
+using Avalonia.Styling;
+
+using FileToolbox;
+using FileToolbox.Models;
+using FileToolbox.Services;
+using FileToolbox.Views;
+
+using Xunit;
+
+namespace FileToolbox.Tests;
+
+// ISingleViewApplicationLifetime is marked [NotClientImplementable] in Avalonia 11.2.8:
+// the compiler refuses any type that declares `: ISingleViewApplicationLifetime` directly
+// (CS0535 on an unspeakable member injected by Avalonia's analyzer). DispatchProxy sidesteps
+// this because the interface implementation is emitted by the runtime (Reflection.Emit), not
+// by Roslyn compiling a user-authored `: ISingleViewApplicationLifetime` declaration.
+// Cannot be sealed: it must derive from DispatchProxy, which DispatchProxy.Create<T,TProxy> requires unsealed.
+[SuppressMessage("Performance", "CA1852:Seal internal types", Justification = "Must stay unsealed: DispatchProxy.Create<T,TProxy> requires an unsealed TProxy to subclass at runtime.")]
+file class FakeSingleViewLifetime : DispatchProxy
+{
+    public Control? MainView { get; set; }
+
+    protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
+    {
+        if (targetMethod is null)
+            return null;
+
+        if (targetMethod.Name == "get_MainView")
+            return MainView;
+
+        if (targetMethod.Name == "set_MainView")
+        {
+            MainView = (Control?)args![0];
+            return null;
+        }
+
+        return null;
+    }
+
+    public static (ISingleViewApplicationLifetime Lifetime, FakeSingleViewLifetime Fake) Create()
+    {
+        object proxy = DispatchProxy.Create<ISingleViewApplicationLifetime, FakeSingleViewLifetime>()!;
+        return ((ISingleViewApplicationLifetime)proxy, (FakeSingleViewLifetime)proxy);
+    }
+}
+
+public class AppLifetimeBranchTests
+{
+    [AvaloniaFact]
+    public void OnFrameworkInitializationCompleted_WithSingleViewLifetime_SetsMainViewToMainView()
+    {
+        var app = new App();
+        var (lifetime, fake) = FakeSingleViewLifetime.Create();
+        app.ApplicationLifetime = lifetime;
+
+        app.OnFrameworkInitializationCompleted();
+
+        Assert.IsType<MainView>(fake.MainView);
+    }
+
+    [AvaloniaFact]
+    public async Task OnFrameworkInitializationCompleted_WithSingleViewLifetime_AppliesSavedThemeVariant()
+    {
+        AppSettings originalCurrent = AppSettingsStore.Current;
+        string originalCurrentPath = AppSettingsStore.CurrentPath;
+        string tempPath = System.IO.Path.Combine(
+            System.IO.Path.GetTempPath(),
+            "fe-applifetime-" + Guid.NewGuid().ToString("N"),
+            "settings.json");
+        try
+        {
+            await AppSettingsStore.SaveAsync(tempPath, new AppSettings { ThemeVariant = "Dark" });
+            AppSettingsStore.CurrentPath = tempPath;
+
+            var app = new App();
+            var (lifetime, _) = FakeSingleViewLifetime.Create();
+            app.ApplicationLifetime = lifetime;
+
+            app.OnFrameworkInitializationCompleted();
+
+            Assert.Equal(ThemeVariant.Dark, app.RequestedThemeVariant);
+        }
+        finally
+        {
+            AppSettingsStore.Current = originalCurrent;
+            AppSettingsStore.CurrentPath = originalCurrentPath;
+        }
+    }
+}
