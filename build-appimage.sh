@@ -6,8 +6,8 @@ set -euo pipefail
 # Configurazione
 # ============================================================
 
-APP_NAME="Sbroglione"
-PROJECT="Sbroglione.Desktop"
+APP_NAME="FileToolbox"
+PROJECT="FileToolbox.Desktop"
 RUNTIME="linux-x64"
 CONFIGURATION="Release"
 
@@ -108,7 +108,7 @@ cat > "$APPDIR/AppRun" <<'EOF'
 
 HERE="$(dirname "$(readlink -f "$0")")"
 
-exec "$HERE/usr/bin/Sbroglione.Desktop" "$@"
+exec "$HERE/usr/bin/FileToolbox.Desktop" "$@"
 EOF
 
 chmod +x "$APPDIR/AppRun"
@@ -120,7 +120,7 @@ chmod +x "$APPDIR/AppRun"
 echo "[5/7] Creazione icona..."
 
 # Crea una semplice icona 256x256.
-# Puoi sostituirla successivamente con quella reale di Sbroglione.
+# Puoi sostituirla successivamente con quella reale di FileToolbox.
 
 convert \
     -size 256x256 \
@@ -130,28 +130,28 @@ convert \
     -pointsize 96 \
     -font DejaVu-Sans-Bold \
     -annotate +0+0 "S" \
-    "$APPDIR/Sbroglione.png"
+    "$APPDIR/FileToolbox.png"
 
 # Copia l'icona anche nella struttura standard
-cp "$APPDIR/Sbroglione.png" \
-   "$APPDIR/usr/share/icons/hicolor/256x256/apps/Sbroglione.png"
+cp "$APPDIR/FileToolbox.png" \
+   "$APPDIR/usr/share/icons/hicolor/256x256/apps/FileToolbox.png"
 
 # ============================================================
 # Desktop Entry
 # ============================================================
 
-cat > "$APPDIR/Sbroglione.desktop" <<'EOF'
+cat > "$APPDIR/FileToolbox.desktop" <<'EOF'
 [Desktop Entry]
 Type=Application
-Name=Sbroglione
-Exec=Sbroglione.Desktop
-Icon=Sbroglione
+Name=FileToolbox
+Exec=FileToolbox.Desktop
+Icon=FileToolbox
 Categories=Utility;
 Terminal=false
 EOF
 
-cp "$APPDIR/Sbroglione.desktop" \
-   "$APPDIR/usr/share/applications/Sbroglione.desktop"
+cp "$APPDIR/FileToolbox.desktop" \
+   "$APPDIR/usr/share/applications/FileToolbox.desktop"
 
 # ============================================================
 # Creazione AppImage

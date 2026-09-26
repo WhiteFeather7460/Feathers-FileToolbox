@@ -1,0 +1,200 @@
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Markup.Xaml;
+using Avalonia.Styling;
+
+using FileToolbox.Models;
+using FileToolbox.Services;
+using FileToolbox.ViewModels;
+using FileToolbox.Views;
+
+namespace FileToolbox;
+
+public partial class App : Application
+{
+    /// <summary>
+    /// Seam piattaforma: avvia l'host di background che tiene vivi i runner watch-folder
+    /// quando il processo non è una normale app desktop (su Android il foreground service
+    /// <c>WatchFolderForegroundService</c>). Impostato dall'head project prima che
+    /// <see cref="OnFrameworkInitializationCompleted"/> giri (Avalonia chiama
+    /// <c>CustomizeAppBuilder</c> prima); resta <c>null</c> su desktop, dove i runner
+    /// partono in-process.
+    /// </summary>
+    public static Action? StartBackgroundWatchHost { get; set; }
+
+    /// <summary>
+    /// Seam piattaforma: ferma l'host di background avviato da
+    /// <see cref="StartBackgroundWatchHost"/>, quando l'ultima regola watch-folder abilitata
+    /// viene disabilitata — su desktop i runner restano semplicemente in-process finché il
+    /// processo vive, quindi non serve stop esplicito e questo resta <c>null</c> lì.
+    /// </summary>
+    public static Action? StopBackgroundWatchHost { get; set; }
+
+    /// <summary>
+    /// Seam piattaforma: stato del permesso "All files access". <c>null</c> su desktop (dove
+    /// non serve alcun permesso — <see cref="MainWindowViewModel.IsStorageAccessGranted"/> resta
+    /// sempre <c>true</c>), impostato da <c>MainActivity</c> su Android.
+    /// </summary>
+    public static Func<bool>? StorageAccessGranted { get; set; }
+
+    /// <summary>Apre le Impostazioni di sistema per concedere il permesso. <c>null</c> su desktop.</summary>
+    public static Action? RequestStorageAccess { get; set; }
+
+    /// <summary>
+    /// Invocato da <c>MainActivity.OnResume</c> quando l'utente torna dalle Impostazioni: la UI
+    /// non ha altro modo di accorgersi di una concessione/revoca avvenuta fuori dall'app.
+    /// </summary>
+    public static Action<bool>? OnStorageAccessChanged { get; set; }
+
+    public override void Initialize()
+    {
+        AvaloniaXamlLoader.Load(this);
+    }
+
+    public override void OnFrameworkInitializationCompleted()
+    {
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            AppSettingsStore.LoadCurrent();
+            LocalizationService.Apply(AppSettingsStore.Current.Language);
+            ApplySavedTheme();
+
+            // Avvia i runner watch-folder delle regole attive. Nessun handler di
+            // shutdown nell'app: i runner muoiono col processo (limite dichiarato).
+            List<WatchRule> rules = WatchRuleStore.Load();
+            _ = Task.Run(() => WatchFolderService.StartAllEnabledRules(rules));
+
+            // Best effort: rimuove un .old lasciato da un update precedente. Prima di creare
+            // la finestra, non blocca comunque lo startup (I/O trascurabile, un file).
+            SelfUpdateService.CleanupOrphanBackup();
+
+            var mainWindowViewModel = new MainWindowViewModel();
+
+            // Percorso di chiusura "normale" (utente chiude la finestra, Alt+F4, ecc.).
+            desktop.ShutdownRequested += (_, _) => UnloadAllPlugins(mainWindowViewModel);
+
+            // SelfUpdateService.ApplyUpdateAsync termina il processo via ExitProcess (default
+            // Environment.Exit) DOPO aver rilanciato l'eseguibile aggiornato, senza passare da
+            // IClassicDesktopStyleApplicationLifetime.Shutdown(): ShutdownRequested sopra non
+            // scatta in quel percorso, quindi OnUnload non verrebbe mai chiamato durante un
+            // self-update. AppDomain.ProcessExit scatta invece per QUALUNQUE causa di terminazione
+            // del processo (Shutdown normale incluso — da qui il controllo idempotente in
+            // UnloadAllPlugins), garantendo che OnUnload giri sempre, indipendentemente dal path
+            // di uscita.
+            AppDomain.CurrentDomain.ProcessExit += (_, _) => UnloadAllPlugins(mainWindowViewModel);
+
+            desktop.MainWindow = new MainWindow
+            {
+                DataContext = mainWindowViewModel
+            };
+
+            // Fire-and-forget: il check di aggiornamento non deve bloccare l'avvio né la UI;
+            // eventuali errori restano contenuti dentro StartUpdateCheckAsync (nessuna eccezione
+            // propagata al chiamante).
+            _ = mainWindowViewModel.StartUpdateCheckAsync();
+        }
+        else if (ApplicationLifetime is ISingleViewApplicationLifetime singleView)
+        {
+            AppSettingsStore.LoadCurrent();
+            LocalizationService.Apply(AppSettingsStore.Current.Language);
+            ApplySavedTheme();
+
+            SelfUpdateService.CleanupOrphanBackup();
+
+            // Fase 3C: su Android i runner non possono vivere nel processo dell'Activity
+            // (Doze / chiusura), quindi li ospita un foreground service registrato dall'head
+            // project in StartBackgroundWatchHost. Lo si avvia solo se c'è almeno una regola
+            // abilitata: un foreground service richiede una notifica persistente, e mostrarla
+            // senza nulla da sincronizzare sarebbe solo rumore.
+            // IsWatchFolderSupported segue il permesso di storage: la tab mostra il banner
+            // finché l'accesso non è concesso, poi la UI di gestione regole (solo Interval,
+            // vedi WatchFoldersView).
+            if (StartBackgroundWatchHost is { } startBackgroundWatchHost
+                && WatchRuleStore.Load().Exists(rule => rule.Enabled))
+            {
+                try
+                {
+                    startBackgroundWatchHost();
+                }
+                catch (Exception)
+                {
+                    // L'avvio del service non deve mai impedire l'apertura della UI.
+                }
+            }
+
+            var mainViewModel = new MainWindowViewModel
+            {
+                IsWatchFolderSupported = StorageAccessGranted?.Invoke() ?? false,
+                IsStorageAccessGranted = StorageAccessGranted?.Invoke() ?? true
+            };
+            OnStorageAccessChanged = granted => UiDispatch.Post(() =>
+            {
+                mainViewModel.IsStorageAccessGranted = granted;
+                mainViewModel.IsWatchFolderSupported = granted;
+            });
+            singleView.MainView = new MainView
+            {
+                DataContext = mainViewModel
+            };
+        }
+
+        base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>
+    /// <c>true</c> dopo la prima chiamata a <see cref="UnloadAllPlugins"/>: sia
+    /// <c>ShutdownRequested</c> sia <c>ProcessExit</c> possono scatenarla per una chiusura
+    /// "normale" (il primo tipicamente scatta prima e innesca comunque la terminazione del
+    /// processo che fa scattare il secondo), quindi va garantita l'esecuzione una sola volta.
+    /// </summary>
+    private static bool _pluginsUnloaded;
+
+    private static void UnloadAllPlugins(MainWindowViewModel mainWindowViewModel)
+    {
+        if (_pluginsUnloaded)
+            return;
+        _pluginsUnloaded = true;
+
+        foreach (var plugin in mainWindowViewModel.LoadedPlugins)
+        {
+            try
+            {
+                plugin.OnUnload();
+            }
+            catch (Exception)
+            {
+                // Un OnUnload che lancia non deve impedire la chiusura pulita dell'app
+                // né bloccare l'OnUnload degli altri plugin.
+            }
+        }
+    }
+
+    /// <summary>
+    /// Applica il tema salvato in <see cref="AppSettingsStore.Current"/> (custom o
+    /// Light/Dark/Default): comune ai branch desktop e single-view (Android), entrambi
+    /// avviati da <see cref="OnFrameworkInitializationCompleted"/> dopo aver caricato le
+    /// impostazioni, cosicché la scelta dell'utente persista tra i riavvii su ogni piattaforma.
+    /// </summary>
+    private void ApplySavedTheme()
+    {
+        ColorTheme? customTheme = AppSettingsStore.Current.CustomThemeId is { } themeId
+            ? ThemeStore.Load(themeId)
+            : null;
+        if (customTheme is not null)
+            ThemeService.Apply(customTheme);
+        else
+            RequestedThemeVariant = ParseThemeVariant(AppSettingsStore.Current.ThemeVariant);
+    }
+
+    private static ThemeVariant ParseThemeVariant(string value) => value switch
+    {
+        "Light" => ThemeVariant.Light,
+        "Dark" => ThemeVariant.Dark,
+        _ => ThemeVariant.Default
+    };
+}

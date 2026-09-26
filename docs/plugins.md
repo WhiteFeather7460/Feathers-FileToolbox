@@ -1,6 +1,6 @@
-# Writing a Sbroglione tab plugin
+# Writing a FileToolbox tab plugin
 
-Sbroglione (desktop) can load third-party plugins that add a tab to the main
+FileToolbox (desktop) can load third-party plugins that add a tab to the main
 window at runtime. This document is for plugin authors — it covers the
 contract, the manifest format, where to install a plugin, and version
 compatibility rules.
@@ -10,7 +10,7 @@ is no plugin install path or ALC-based isolation story on that runtime yet).
 
 ## 1. Implement `ITabPlugin`
 
-Reference `Sbroglione.PluginContracts` (a small, dependency-light assembly —
+Reference `FileToolbox.PluginContracts` (a small, dependency-light assembly —
 its only dependency is `Avalonia.Controls` for `Control`) and implement:
 
 ```csharp
@@ -50,7 +50,7 @@ is generated automatically for most project shapes when you publish/build
 with `<GenerateDependencyFile>true</GenerateDependencyFile>`, or by default
 for anything that produces a `.deps.json`). Without a `.deps.json`, only
 assemblies already loaded by the host itself (e.g. `Avalonia.Controls`,
-`Sbroglione.PluginContracts`) will resolve automatically.
+`FileToolbox.PluginContracts`) will resolve automatically.
 
 ## 2. Write `plugin.json`
 
@@ -135,12 +135,12 @@ track that major number, not your plugin's own `version`.
 
 ## Manual verification (for testing your own plugin against a local build)
 
-1. Build `Sbroglione.PluginContracts` (`dotnet build Sbroglione.PluginContracts`)
+1. Build `FileToolbox.PluginContracts` (`dotnet build FileToolbox.PluginContracts`)
    and reference it from your plugin project (a local `ProjectReference` or a
    copy of the built DLL — there is no published package yet).
-2. Build your plugin, then copy its main DLL, `Sbroglione.PluginContracts.dll`,
+2. Build your plugin, then copy its main DLL, `FileToolbox.PluginContracts.dll`,
    and a `plugin.json` into `~/.config/Sbroglione/plugins/<plugin-id>/`.
-3. Run `dotnet run --project Sbroglione.Desktop` and confirm your tab appears
+3. Run `dotnet run --project FileToolbox.Desktop` and confirm your tab appears
    after the built-in tabs, with the right icon/text, and that its content
    works.
 4. Add a visible side effect to `OnUnload()` (e.g. writing to a file) and
