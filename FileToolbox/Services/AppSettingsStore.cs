@@ -38,8 +38,7 @@ public static class AppSettingsStore
     /// <summary>Percorso predefinito del file impostazioni.</summary>
     public static string DefaultPath =>
         Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Sbroglione",
+            AppDataFolder.Root,
             "settings.json");
 
     /// <summary>

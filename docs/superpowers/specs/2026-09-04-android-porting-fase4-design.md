@@ -51,7 +51,7 @@ o non necessari).
 
 ## 1. `WatchFolderForegroundService` — fix di robustezza
 
-Concern noti dalla Fase 3, in `Sbroglione.Android/WatchFolderForegroundService.cs`:
+Concern noti dalla Fase 3, in `FileToolbox.Android/WatchFolderForegroundService.cs`:
 
 - **`StartForeground` senza try/catch** (righe 63-66): può lanciare
   (`ForegroundServiceDidNotStartInTimeException` o rifiuto di sistema su

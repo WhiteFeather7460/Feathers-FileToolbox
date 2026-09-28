@@ -5,7 +5,7 @@ namespace FileToolbox.Services;
 
 /// <summary>
 /// Accesso al keyring del sistema operativo per le password dei profili.
-/// Chiave logica: servizio "Sbroglione" + Guid del profilo.
+/// Chiave logica: servizio "FileToolbox" + Guid del profilo (con fallback di migrazione al vecchio servizio "Sbroglione").
 /// </summary>
 public interface ICredentialStore
 {

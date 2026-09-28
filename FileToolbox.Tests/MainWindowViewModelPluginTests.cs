@@ -13,7 +13,7 @@ public sealed class MainWindowViewModelPluginTests : IDisposable
     public MainWindowViewModelPluginTests()
     {
         // Il costruttore parameterless di MainWindowViewModel chiama PluginLoader.Discover senza
-        // override: isoliamo da ~/.config/Sbroglione/plugins reale (che sulla macchina di uno
+        // override: isoliamo da ~/.config/FileToolbox/plugins reale (che sulla macchina di uno
         // sviluppatore potrebbe contenere plugin installati) puntando a una cartella vuota dedicata.
         PluginLoader.PluginsRootPath = _emptyRoot;
     }

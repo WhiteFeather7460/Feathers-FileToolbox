@@ -11,7 +11,10 @@ namespace FileToolbox.Services;
 /// </summary>
 public sealed class SecretToolCredentialStore : ICredentialStore
 {
-    private const string Service = "Sbroglione";
+    private const string Service = "FileToolbox";
+
+    /// <summary>Servizio usato prima del rename: le password salvate sotto questo nome vengono migrate al primo accesso.</summary>
+    private const string LegacyService = "Sbroglione";
 
     /// <summary>
     /// Timeout delle singole operazioni: un keyring bloccato o in attesa di sblocco
@@ -67,10 +70,27 @@ public sealed class SecretToolCredentialStore : ICredentialStore
 
     public async Task<string?> GetPasswordAsync(Guid profileId)
     {
+        string? password = await LookupAsync(Service, profileId);
+        if (password is not null)
+            return password;
+
+        // Migrazione: password salvata col nome precedente al rename, la si sposta sul nuovo servizio.
+        password = await LookupAsync(LegacyService, profileId);
+        if (password is not null)
+        {
+            await SetPasswordAsync(profileId, password);
+            await ClearAsync(LegacyService, profileId);
+        }
+
+        return password;
+    }
+
+    private static async Task<string?> LookupAsync(string service, Guid profileId)
+    {
         var result = await RunAsync(new ProcessStartInfo
         {
             FileName = "secret-tool",
-            ArgumentList = { "lookup", "service", Service, "profile", profileId.ToString("N") },
+            ArgumentList = { "lookup", "service", service, "profile", profileId.ToString("N") },
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false
@@ -102,10 +122,16 @@ public sealed class SecretToolCredentialStore : ICredentialStore
 
     public async Task DeletePasswordAsync(Guid profileId)
     {
+        await ClearAsync(Service, profileId);
+        await ClearAsync(LegacyService, profileId);
+    }
+
+    private static async Task ClearAsync(string service, Guid profileId)
+    {
         _ = await RunAsync(new ProcessStartInfo
         {
             FileName = "secret-tool",
-            ArgumentList = { "clear", "service", Service, "profile", profileId.ToString("N") },
+            ArgumentList = { "clear", "service", service, "profile", profileId.ToString("N") },
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false

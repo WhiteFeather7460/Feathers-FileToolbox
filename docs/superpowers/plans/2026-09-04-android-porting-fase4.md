@@ -4,17 +4,17 @@
 
 **Goal:** Harden `WatchFolderForegroundService` (crash safety, explicit stop path reachable from the UI, Start/Stop race guard, no Activity-context leak) so the watch-folder foreground service is ready for the Android porting's final manual verification pass.
 
-**Architecture:** All changes are confined to `Sbroglione.Android/WatchFolderForegroundService.cs`, `Sbroglione.Android/MainActivity.cs`, `Sbroglione/App.axaml.cs` (new platform seam) and `Sbroglione/ViewModels/WatchFoldersViewModel.cs` (wiring the new stop seam where the last rule gets disabled). No new files, no changes to `IFileSystemAccessor`, copy/checksum/compare services, or the 3 dialogs (already done — see spec correction).
+**Architecture:** All changes are confined to `FileToolbox.Android/WatchFolderForegroundService.cs`, `FileToolbox.Android/MainActivity.cs`, `FileToolbox/App.axaml.cs` (new platform seam) and `FileToolbox/ViewModels/WatchFoldersViewModel.cs` (wiring the new stop seam where the last rule gets disabled). No new files, no changes to `IFileSystemAccessor`, copy/checksum/compare services, or the 3 dialogs (already done — see spec correction).
 
-**Tech Stack:** .NET 8 (Sbroglione.Android targets `net10.0-android`), Avalonia, xunit (`Sbroglione.Tests`, desktop-only — cannot reference Android types).
+**Tech Stack:** .NET 8 (FileToolbox.Android targets `net10.0-android`), Avalonia, xunit (`FileToolbox.Tests`, desktop-only — cannot reference Android types).
 
 **Spec:** `docs/superpowers/specs/2026-09-04-android-porting-fase4-design.md`
 
 ## Global Constraints
 
 - Never hardcode colors in views; not applicable to this plan (no view/style changes).
-- `dotnet build Sbroglione.sln` must stay green; `Sbroglione.Android` is excluded from `.Build.0` so it is **not** built by that command — build it explicitly via `dotnet build Sbroglione.Android/Sbroglione.Android.csproj` after each Android-side change.
-- `Sbroglione.Tests` cannot reference Android types (`Sbroglione.Android` is not a project reference) — no unit test can exercise `WatchFolderForegroundService`, `MainActivity`, or any `Android.*` API directly. Where a step below has no automated test, say so explicitly and rely on `dotnet build` + the final manual verification pass (out of scope for this plan).
+- `dotnet build FileToolbox.sln` must stay green; `FileToolbox.Android` is excluded from `.Build.0` so it is **not** built by that command — build it explicitly via `dotnet build FileToolbox.Android/FileToolbox.Android.csproj` after each Android-side change.
+- `FileToolbox.Tests` cannot reference Android types (`FileToolbox.Android` is not a project reference) — no unit test can exercise `WatchFolderForegroundService`, `MainActivity`, or any `Android.*` API directly. Where a step below has no automated test, say so explicitly and rely on `dotnet build` + the final manual verification pass (out of scope for this plan).
 - Comments in this codebase explain *why*, never *what* — match existing style (see current XML doc comments in the touched files) when adding any.
 - Never commit directly to `main`: work on a feature branch, e.g. `android-porting-fase4`.
 
@@ -23,8 +23,8 @@
 ### Task 1: `WatchFolderForegroundService` — crash-safe `StartForeground` + fix Activity-context leak
 
 **Files:**
-- Modify: `Sbroglione.Android/WatchFolderForegroundService.cs:52-91` (`OnStartCommand`)
-- Modify: `Sbroglione.Android/MainActivity.cs:28-48` (`CustomizeAppBuilder`), `:75-79` (`StartWatchFolderForegroundService`)
+- Modify: `FileToolbox.Android/WatchFolderForegroundService.cs:52-91` (`OnStartCommand`)
+- Modify: `FileToolbox.Android/MainActivity.cs:28-48` (`CustomizeAppBuilder`), `:75-79` (`StartWatchFolderForegroundService`)
 
 **Interfaces:**
 - Consumes: nothing new from other tasks.
@@ -78,18 +78,18 @@ with:
 
 - [x] **Step 2: Build to verify the change compiles**
 
-Run: `dotnet build Sbroglione.Android/Sbroglione.Android.csproj`
+Run: `dotnet build FileToolbox.Android/FileToolbox.Android.csproj`
 Expected: build succeeds, no new warnings on the touched lines.
 
 No automated test for this step: `StartForeground` and `StartCommandResult` are
-Android runtime APIs, unreachable from `Sbroglione.Tests`. Covered by the final
+Android runtime APIs, unreachable from `FileToolbox.Tests`. Covered by the final
 manual verification pass (spec section 3): confirm the service still starts
 normally, and that a forced-failure path (not reproducible on a normal device)
 is accepted as untestable outside a lab setup.
 
 - [x] **Step 3: Make `MainActivity.StartWatchFolderForegroundService` static and use `Application.Context`**
 
-In `Sbroglione.Android/MainActivity.cs`, replace:
+In `FileToolbox.Android/MainActivity.cs`, replace:
 
 ```csharp
     private void StartWatchFolderForegroundService()
@@ -125,7 +125,7 @@ to `Action` is valid with no `this` capture).
 
 - [x] **Step 4: Build to verify**
 
-Run: `dotnet build Sbroglione.Android/Sbroglione.Android.csproj`
+Run: `dotnet build FileToolbox.Android/FileToolbox.Android.csproj`
 Expected: build succeeds. No automated test possible (Android Activity/Context
 APIs); covered by manual verification pass (confirm the foreground service
 still starts after an Activity recreation, e.g. rotation, without the app
@@ -134,7 +134,7 @@ crashing or losing the watch-folder notification).
 - [x] **Step 5: Commit**
 
 ```bash
-git add Sbroglione.Android/WatchFolderForegroundService.cs Sbroglione.Android/MainActivity.cs
+git add FileToolbox.Android/WatchFolderForegroundService.cs FileToolbox.Android/MainActivity.cs
 git commit -m "fix(android): crash-safe StartForeground, drop Activity leak from watch-folder seam"
 ```
 
@@ -143,10 +143,10 @@ git commit -m "fix(android): crash-safe StartForeground, drop Activity leak from
 ### Task 2: Explicit stop path + Start/Stop race guard
 
 **Files:**
-- Modify: `Sbroglione.Android/WatchFolderForegroundService.cs:42-109` (`_runnersStarted` field, `OnStartCommand`, `OnDestroy`)
-- Modify: `Sbroglione.Android/MainActivity.cs` (add `StopWatchFolderForegroundService`, register a new seam)
-- Modify: `Sbroglione/App.axaml.cs:28` (add `StopBackgroundWatchHost` seam next to `StartBackgroundWatchHost`)
-- Modify: `Sbroglione/ViewModels/WatchFoldersViewModel.cs:210-254` (`ApplyRuleStateAsync` or equivalent — call the new stop seam when no rule stays enabled)
+- Modify: `FileToolbox.Android/WatchFolderForegroundService.cs:42-109` (`_runnersStarted` field, `OnStartCommand`, `OnDestroy`)
+- Modify: `FileToolbox.Android/MainActivity.cs` (add `StopWatchFolderForegroundService`, register a new seam)
+- Modify: `FileToolbox/App.axaml.cs:28` (add `StopBackgroundWatchHost` seam next to `StartBackgroundWatchHost`)
+- Modify: `FileToolbox/ViewModels/WatchFoldersViewModel.cs:210-254` (`ApplyRuleStateAsync` or equivalent — call the new stop seam when no rule stays enabled)
 
 **Interfaces:**
 - Consumes: `MainActivity.StartWatchFolderForegroundService` static/`Application.Context` pattern from Task 1 — the new `StopWatchFolderForegroundService` must follow the same shape (`static`, `Application.Context`-based `Intent`).
@@ -272,16 +272,16 @@ with:
 
 - [x] **Step 2: Build to verify**
 
-Run: `dotnet build Sbroglione.Android/Sbroglione.Android.csproj`
+Run: `dotnet build FileToolbox.Android/FileToolbox.Android.csproj`
 Expected: build succeeds. No automated test possible — `lock` around a private
 field guarding Android-only `Task.Run`/`Service` calls cannot be isolated into
-`Sbroglione.Tests` without dragging in Android types; covered by manual
+`FileToolbox.Tests` without dragging in Android types; covered by manual
 verification (rapid enable/disable of watch rules while the service is live,
 watching for duplicate runners or a stuck notification).
 
 - [x] **Step 3: Add `App.StopBackgroundWatchHost` seam**
 
-In `Sbroglione/App.axaml.cs`, right after the existing `StartBackgroundWatchHost`
+In `FileToolbox/App.axaml.cs`, right after the existing `StartBackgroundWatchHost`
 property (line 28), add:
 
 ```csharp
@@ -296,7 +296,7 @@ property (line 28), add:
 
 - [x] **Step 4: Add `MainActivity.StopWatchFolderForegroundService` and register it**
 
-In `Sbroglione.Android/MainActivity.cs`, add next to `StartWatchFolderForegroundService`
+In `FileToolbox.Android/MainActivity.cs`, add next to `StartWatchFolderForegroundService`
 (Task 1's version):
 
 ```csharp
@@ -321,12 +321,12 @@ In `CustomizeAppBuilder`, right after the existing
 
 - [x] **Step 5: Build to verify**
 
-Run: `dotnet build Sbroglione.Android/Sbroglione.Android.csproj`
+Run: `dotnet build FileToolbox.Android/FileToolbox.Android.csproj`
 Expected: build succeeds.
 
 - [x] **Step 6: Wire the stop seam into `WatchFoldersViewModel` when no rule stays enabled**
 
-Read `Sbroglione/ViewModels/WatchFoldersViewModel.cs` around lines 205-254
+Read `FileToolbox/ViewModels/WatchFoldersViewModel.cs` around lines 205-254
 (the method that calls `WatchFolderService.Stop`/`Start` per rule, currently
 invoking `App.StartBackgroundWatchHost?.Invoke()` after a successful `Start`).
 After that block, once the per-rule Start/Stop has been applied, add a check
@@ -345,15 +345,15 @@ right after line 253's closing `}`) by appending:
         }
 ```
 
-Add `using Sbroglione;` at the top of the file if `App` is not already
+Add `using FileToolbox;` at the top of the file if `App` is not already
 resolvable (check the existing `using` block first — `App.StartBackgroundWatchHost`
 is already called a few lines above, so the namespace is already in scope; do
 not add a duplicate `using`).
 
 - [x] **Step 7: Build and run the desktop test suite**
 
-Run: `dotnet build Sbroglione.sln && dotnet test Sbroglione.Tests`
-Expected: build succeeds (main solution excludes `Sbroglione.Android`, so this
+Run: `dotnet build FileToolbox.sln && dotnet test FileToolbox.Tests`
+Expected: build succeeds (main solution excludes `FileToolbox.Android`, so this
 also confirms the `WatchFoldersViewModel` change alone doesn't break desktop);
 all existing tests still pass — `App.StopBackgroundWatchHost` is `null` on
 desktop, so the new call is a no-op there, same pattern as
@@ -365,7 +365,7 @@ foreground service's notification disappears).
 - [x] **Step 8: Commit**
 
 ```bash
-git add Sbroglione.Android/WatchFolderForegroundService.cs Sbroglione.Android/MainActivity.cs Sbroglione/App.axaml.cs Sbroglione/ViewModels/WatchFoldersViewModel.cs
+git add FileToolbox.Android/WatchFolderForegroundService.cs FileToolbox.Android/MainActivity.cs FileToolbox/App.axaml.cs FileToolbox/ViewModels/WatchFoldersViewModel.cs
 git commit -m "feat(android): stop watch-folder foreground service when last rule is disabled"
 ```
 

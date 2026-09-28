@@ -23,8 +23,7 @@ public static class PluginLoader
     /// <summary>Sovrascrivibile nei test per non toccare l'AppData reale.</summary>
     public static string PluginsRootPath { get; set; } =
         Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Sbroglione",
+            AppDataFolder.Root,
             "plugins");
 
     public static IReadOnlyList<ITabPlugin> Discover()

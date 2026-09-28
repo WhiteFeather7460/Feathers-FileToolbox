@@ -11,7 +11,10 @@ namespace FileToolbox.Services;
 /// </summary>
 public sealed class MacKeychainCredentialStore : ICredentialStore
 {
-    private const string Service = "Sbroglione";
+    private const string Service = "FileToolbox";
+
+    /// <summary>Servizio usato prima del rename: le password salvate sotto questo nome vengono migrate al primo accesso.</summary>
+    private const string LegacyService = "Sbroglione";
 
     /// <summary>
     /// Timeout delle singole operazioni: un Keychain bloccato o in attesa di sblocco
@@ -63,12 +66,29 @@ public sealed class MacKeychainCredentialStore : ICredentialStore
 
     public async Task<string?> GetPasswordAsync(Guid profileId)
     {
+        string? password = await FindAsync(Service, profileId);
+        if (password is not null)
+            return password;
+
+        // Migrazione: password salvata col nome precedente al rename, la si sposta sul nuovo servizio.
+        password = await FindAsync(LegacyService, profileId);
+        if (password is not null)
+        {
+            await SetPasswordAsync(profileId, password);
+            await DeleteAsync(LegacyService, profileId);
+        }
+
+        return password;
+    }
+
+    private static async Task<string?> FindAsync(string service, Guid profileId)
+    {
         var result = await RunAsync(new ProcessStartInfo
         {
             FileName = "security",
             ArgumentList =
             {
-                "find-generic-password", "-a", profileId.ToString("N"), "-s", Service, "-w"
+                "find-generic-password", "-a", profileId.ToString("N"), "-s", service, "-w"
             },
             RedirectStandardOutput = true,
             RedirectStandardError = true,
@@ -98,10 +118,16 @@ public sealed class MacKeychainCredentialStore : ICredentialStore
 
     public async Task DeletePasswordAsync(Guid profileId)
     {
+        await DeleteAsync(Service, profileId);
+        await DeleteAsync(LegacyService, profileId);
+    }
+
+    private static async Task DeleteAsync(string service, Guid profileId)
+    {
         _ = await RunAsync(new ProcessStartInfo
         {
             FileName = "security",
-            ArgumentList = { "delete-generic-password", "-a", profileId.ToString("N"), "-s", Service },
+            ArgumentList = { "delete-generic-password", "-a", profileId.ToString("N"), "-s", service },
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false

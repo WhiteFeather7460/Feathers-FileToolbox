@@ -21,8 +21,7 @@ public static class CopyProfileStore
     /// <summary>Percorso predefinito del file profili.</summary>
     public static string DefaultPath =>
         Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Sbroglione",
+            AppDataFolder.Root,
             "copy-profiles.json");
 
     /// <summary>Percorso corrente; sovrascrivibile nei test.</summary>

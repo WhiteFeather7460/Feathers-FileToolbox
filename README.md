@@ -16,7 +16,7 @@ The UI is organized into tabs:
 
 ## Plugins
 
-FileToolbox (desktop) can load third-party tab plugins at runtime, discovered from `~/.config/Sbroglione/plugins/`. Minimal plugin:
+FileToolbox (desktop) can load third-party tab plugins at runtime, discovered from `~/.config/FileToolbox/plugins/`. Minimal plugin:
 
 ```csharp
 using Avalonia.Controls;
@@ -35,7 +35,7 @@ public sealed class MyTabPlugin : ITabPlugin
 ```
 
 ```
-~/.config/Sbroglione/plugins/my-plugin/
+~/.config/FileToolbox/plugins/my-plugin/
     plugin.json
     MyPlugin.dll
 ```
@@ -138,7 +138,7 @@ Wrap the output in a `.app` bundle using Avalonia's official script (see docs).
 
 ## Android
 
-`FileToolbox.Android` (package `com.whitefeather.sbroglione`, min SDK 26 / target SDK 36) is a separate head project, excluded from `FileToolbox.sln`'s build — build and deploy it on its own.
+`FileToolbox.Android` (package `com.whitefeather.filetoolbox`, min SDK 26 / target SDK 36) is a separate head project, excluded from `FileToolbox.sln`'s build — build and deploy it on its own.
 
 ### Setup
 
@@ -155,7 +155,7 @@ dotnet build FileToolbox.Android/FileToolbox.Android.csproj -c Debug -f net10.0-
   -p:AndroidSdkDirectory="$ANDROID_HOME"
 ```
 
-Output: `FileToolbox.Android/bin/Debug/net10.0-android/com.whitefeather.sbroglione-Signed.apk`
+Output: `FileToolbox.Android/bin/Debug/net10.0-android/com.whitefeather.filetoolbox-Signed.apk`
 
 > **Note:** a plain Debug build uses Fast Deployment (assemblies are pushed to the device separately from the APK by IDE tooling); installing that APK with a bare `adb install` crashes at startup with `No assemblies found ... Assuming this is part of Fast Deployment`. For a command-line `adb install` workflow, embed the assemblies into the APK instead:
 > ```bash
@@ -168,11 +168,11 @@ Output: `FileToolbox.Android/bin/Debug/net10.0-android/com.whitefeather.sbroglio
 
 ```bash
 adb devices  # confirm the target is listed as "device"
-adb install -r FileToolbox.Android/bin/Debug/net10.0-android/com.whitefeather.sbroglione-Signed.apk
-adb shell monkey -p com.whitefeather.sbroglione -c android.intent.category.LAUNCHER 1
+adb install -r FileToolbox.Android/bin/Debug/net10.0-android/com.whitefeather.filetoolbox-Signed.apk
+adb shell monkey -p com.whitefeather.filetoolbox -c android.intent.category.LAUNCHER 1
 ```
 
-If you reinstall over a build that used Fast Deployment (or vice versa), uninstall first (`adb uninstall com.whitefeather.sbroglione`) rather than `-r`, since Android caches the previous deployment mode.
+If you reinstall over a build that used Fast Deployment (or vice versa), uninstall first (`adb uninstall com.whitefeather.filetoolbox`) rather than `-r`, since Android caches the previous deployment mode.
 
 ### First-run permission
 
@@ -185,7 +185,7 @@ dotnet build FileToolbox.Android/FileToolbox.Android.csproj -c Release -f net10.
   -p:ApplicationDisplayVersion=1.0.0
 ```
 
-Output: `FileToolbox.Android/bin/Release/net10.0-android/com.whitefeather.sbroglione-Signed.apk`
+Output: `FileToolbox.Android/bin/Release/net10.0-android/com.whitefeather.filetoolbox-Signed.apk`
 
 ## Project structure
 

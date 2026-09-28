@@ -88,7 +88,7 @@ Field names are matched case-insensitively.
 Each plugin lives in its own subfolder of the plugins root:
 
 ```
-~/.config/Sbroglione/plugins/<plugin-id>/
+~/.config/FileToolbox/plugins/<plugin-id>/
     plugin.json
     YourMainAssembly.dll
     (any dependency DLLs your plugin needs, alongside the main DLL)
@@ -139,7 +139,7 @@ track that major number, not your plugin's own `version`.
    and reference it from your plugin project (a local `ProjectReference` or a
    copy of the built DLL — there is no published package yet).
 2. Build your plugin, then copy its main DLL, `FileToolbox.PluginContracts.dll`,
-   and a `plugin.json` into `~/.config/Sbroglione/plugins/<plugin-id>/`.
+   and a `plugin.json` into `~/.config/FileToolbox/plugins/<plugin-id>/`.
 3. Run `dotnet run --project FileToolbox.Desktop` and confirm your tab appears
    after the built-in tabs, with the right icon/text, and that its content
    works.
