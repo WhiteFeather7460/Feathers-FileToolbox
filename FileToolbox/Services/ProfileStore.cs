@@ -18,8 +18,7 @@ public static class ProfileStore
     /// <summary>Percorso predefinito del file profili.</summary>
     public static string DefaultPath =>
         Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Sbroglione",
+            AppDataFolder.Root,
             "profiles.json");
 
     /// <summary>Carica i profili; lista vuota se il file manca o è illeggibile.</summary>

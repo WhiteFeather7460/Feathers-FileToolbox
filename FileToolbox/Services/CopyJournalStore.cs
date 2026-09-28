@@ -20,8 +20,7 @@ public static class CopyJournalStore
     /// <summary>Percorso predefinito del file journal.</summary>
     public static string DefaultPath =>
         Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Sbroglione",
+            AppDataFolder.Root,
             "copy-journal.json");
 
     /// <summary>Percorso corrente; sovrascrivibile nei test.</summary>

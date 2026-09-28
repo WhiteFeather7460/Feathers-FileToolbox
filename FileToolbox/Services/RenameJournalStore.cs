@@ -22,8 +22,7 @@ public static class RenameJournalStore
 
     public static string DefaultPath =>
         Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Sbroglione",
+            AppDataFolder.Root,
             "rename-journal.json");
 
     public static string CurrentPath { get; set; } = DefaultPath;

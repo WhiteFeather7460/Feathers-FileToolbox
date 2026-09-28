@@ -21,8 +21,7 @@ public static class ThemeStore
     /// <summary>Cartella dei temi. Sovrascrivibile nei test per non toccare l'AppData reale.</summary>
     public static string ThemesDirectory { get; set; } =
         Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Sbroglione",
+            AppDataFolder.Root,
             "themes");
 
     private static string PathFor(string id) => Path.Combine(ThemesDirectory, id + ".json");

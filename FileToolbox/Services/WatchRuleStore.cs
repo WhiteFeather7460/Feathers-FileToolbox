@@ -25,8 +25,7 @@ public static class WatchRuleStore
     /// <summary>Percorso predefinito del file regole.</summary>
     public static string DefaultPath =>
         Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Sbroglione",
+            AppDataFolder.Root,
             "watch-rules.json");
 
     /// <summary>Percorso corrente; sovrascrivibile nei test.</summary>

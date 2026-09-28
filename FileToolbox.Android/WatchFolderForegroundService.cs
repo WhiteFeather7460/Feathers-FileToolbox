@@ -24,7 +24,7 @@ namespace FileToolbox.Android;
 /// possibile solo su device: rientra nella verifica manuale finale del porting.
 /// </summary>
 [Service(
-    Name = "com.whitefeather.sbroglione.WatchFolderForegroundService",
+    Name = "com.whitefeather.filetoolbox.WatchFolderForegroundService",
     Exported = false,
     ForegroundServiceType = ForegroundService.TypeDataSync)]
 public sealed class WatchFolderForegroundService : Service

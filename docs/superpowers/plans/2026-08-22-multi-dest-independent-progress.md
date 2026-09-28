@@ -25,15 +25,15 @@
 **Model:** sonnet
 
 **Files:**
-- Modify: `Sbroglione/Services/FileCopyService.cs:76-126` (metodo `CopyFileToManyAsync`)
-- Test: `Sbroglione.Tests/FileCopyServiceTests.cs`
+- Modify: `FileToolbox/Services/FileCopyService.cs:76-126` (metodo `CopyFileToManyAsync`)
+- Test: `FileToolbox.Tests/FileCopyServiceTests.cs`
 
 **Interfaces:**
 - Produces: `Task<CopyToManyResult> CopyFileToManyAsync(string sourcePath, IReadOnlyList<string> destinationPaths, Action<string, long>? onBytesCopied, CancellationToken ct, int bufferSize = DefaultBufferSize)` e `readonly record struct CopyToManyResult(IReadOnlyList<string> SucceededDestinations, IReadOnlyDictionary<string, Exception> FailedDestinations)`. `onBytesCopied` ora riceve `(destinationPath, deltaBytes)` invece di solo `deltaBytes`.
 
 - [ ] **Step 1: Aggiorna i test esistenti alla nuova firma**
 
-I due test che usano `CopyFileToManyAsync` in `Sbroglione.Tests/FileCopyServiceTests.cs` (righe 90-122) vanno adattati: `onBytesCopied` ora prende `(string, long)`.
+I due test che usano `CopyFileToManyAsync` in `FileToolbox.Tests/FileCopyServiceTests.cs` (righe 90-122) vanno adattati: `onBytesCopied` ora prende `(string, long)`.
 
 ```csharp
 [Fact]
@@ -127,7 +127,7 @@ Expected: FAIL a compilazione (firma diversa) o su `result`/eccezione mancante.
 
 - [ ] **Step 4: Implementa `CopyToManyResult` e il nuovo `CopyFileToManyAsync`**
 
-Aggiungi `using System.Collections.Concurrent;` e `using System.Threading.Channels;` in cima a `Sbroglione/Services/FileCopyService.cs`. Sostituisci il metodo (righe 76-126):
+Aggiungi `using System.Collections.Concurrent;` e `using System.Threading.Channels;` in cima a `FileToolbox/Services/FileCopyService.cs`. Sostituisci il metodo (righe 76-126):
 
 ```csharp
 private const int DestinationChannelCapacity = 8;
@@ -258,7 +258,7 @@ Expected: PASS
 - [ ] **Step 6: Commit**
 
 ```bash
-git add Sbroglione/Services/FileCopyService.cs Sbroglione.Tests/FileCopyServiceTests.cs
+git add FileToolbox/Services/FileCopyService.cs FileToolbox.Tests/FileCopyServiceTests.cs
 git commit -m "feat: CopyFileToManyAsync usa writer per-destinazione disaccoppiati via channel"
 ```
 
@@ -269,8 +269,8 @@ git commit -m "feat: CopyFileToManyAsync usa writer per-destinazione disaccoppia
 **Model:** sonnet
 
 **Files:**
-- Modify: `Sbroglione/Services/FileCopyService.cs:203-278` (metodo `CopyDirectoryToManyAsync`)
-- Test: `Sbroglione.Tests/FileCopyServiceTests.cs`
+- Modify: `FileToolbox/Services/FileCopyService.cs:203-278` (metodo `CopyDirectoryToManyAsync`)
+- Test: `FileToolbox.Tests/FileCopyServiceTests.cs`
 
 **Interfaces:**
 - Consumes: `CopyFileToManyAsync` e `CopyToManyResult` da Task 1.
@@ -546,7 +546,7 @@ Expected: PASS (tutta la classe, inclusi i test di Task 1)
 - [ ] **Step 7: Commit**
 
 ```bash
-git add Sbroglione/Services/FileCopyService.cs Sbroglione.Tests/FileCopyServiceTests.cs
+git add FileToolbox/Services/FileCopyService.cs FileToolbox.Tests/FileCopyServiceTests.cs
 git commit -m "feat: CopyDirectoryToManyAsync valuta skip/errore/progresso per destinazione"
 ```
 
@@ -557,20 +557,20 @@ git commit -m "feat: CopyDirectoryToManyAsync valuta skip/errore/progresso per d
 **Model:** haiku
 
 **Files:**
-- Modify: `Sbroglione/ViewModels/FolderFilePairViewModel.cs`
-- Test: `Sbroglione.Tests/FolderFilePairViewModelTests.cs` (crea se non esiste — verifica prima con `find Sbroglione.Tests -iname "FolderFilePairViewModelTests.cs"`; se assente aggiungi i nuovi `[Fact]` nel file di test più vicino all'esistente organizzazione, es. nuovo file dedicato)
+- Modify: `FileToolbox/ViewModels/FolderFilePairViewModel.cs`
+- Test: `FileToolbox.Tests/FolderFilePairViewModelTests.cs` (crea se non esiste — verifica prima con `find FileToolbox.Tests -iname "FolderFilePairViewModelTests.cs"`; se assente aggiungi i nuovi `[Fact]` nel file di test più vicino all'esistente organizzazione, es. nuovo file dedicato)
 
 **Interfaces:**
 - Produces: `DestinationProgressViewModel(string path)` con proprietà `Path` (string, get-only), `Progress` (double), `Status` (string?), `SpeedText` (string?), `CurrentBytesPerSecond` (double), `StateKind` (CopyStateKind, default `Copying`), `ErrorMessage` (string?), `CopyingFiles` (ObservableCollection<FileSystemItem>). `FolderFilePairViewModel.DestinationsProgress` : `ObservableCollection<DestinationProgressViewModel>`. Rimuove `FolderFilePairViewModel.CopyingFiles`.
 
-- [ ] **Step 1: Scrivi il test (nuovo file `Sbroglione.Tests/FolderFilePairViewModelTests.cs`)**
+- [ ] **Step 1: Scrivi il test (nuovo file `FileToolbox.Tests/FolderFilePairViewModelTests.cs`)**
 
 ```csharp
-// Sbroglione.Tests/FolderFilePairViewModelTests.cs
-using Sbroglione.Models;
-using Sbroglione.ViewModels;
+// FileToolbox.Tests/FolderFilePairViewModelTests.cs
+using FileToolbox.Models;
+using FileToolbox.ViewModels;
 
-namespace Sbroglione.Tests;
+namespace FileToolbox.Tests;
 
 public sealed class FolderFilePairViewModelTests
 {
@@ -619,7 +619,7 @@ Expected: FAIL a compilazione.
 
 - [ ] **Step 3: Aggiungi `DestinationProgressViewModel` e sostituisci `CopyingFiles`**
 
-In `Sbroglione/ViewModels/FolderFilePairViewModel.cs`, dopo la classe `ExtraDestinationViewModel` (dopo la riga 23), aggiungi:
+In `FileToolbox/ViewModels/FolderFilePairViewModel.cs`, dopo la classe `ExtraDestinationViewModel` (dopo la riga 23), aggiungi:
 
 ```csharp
 /// <summary>
@@ -693,7 +693,7 @@ Nota: a questo punto `CopyPairsViewModel.cs` e `CopyPairsView.axaml` non compila
 - [ ] **Step 5: Commit**
 
 ```bash
-git add Sbroglione/ViewModels/FolderFilePairViewModel.cs Sbroglione.Tests/FolderFilePairViewModelTests.cs
+git add FileToolbox/ViewModels/FolderFilePairViewModel.cs FileToolbox.Tests/FolderFilePairViewModelTests.cs
 git commit -m "feat: DestinationProgressViewModel per stato per-destinazione, sostituisce CopyingFiles condivisa"
 ```
 
@@ -704,8 +704,8 @@ git commit -m "feat: DestinationProgressViewModel per stato per-destinazione, so
 **Model:** sonnet
 
 **Files:**
-- Modify: `Sbroglione/ViewModels/CopyPairsViewModel.cs:341-444` (`StartCopyAsync`) e `:539-615` (`CopySingleFileAsync`)
-- Test: `Sbroglione.Tests/CopyPairsViewModelTests.cs`
+- Modify: `FileToolbox/ViewModels/CopyPairsViewModel.cs:341-444` (`StartCopyAsync`) e `:539-615` (`CopySingleFileAsync`)
+- Test: `FileToolbox.Tests/CopyPairsViewModelTests.cs`
 
 **Interfaces:**
 - Consumes: `FileCopyService.CopyFileToManyAsync` (Task 1), `DestinationProgressViewModel`/`DestinationsProgress` (Task 3).
@@ -713,7 +713,7 @@ git commit -m "feat: DestinationProgressViewModel per stato per-destinazione, so
 
 - [ ] **Step 1: Aggiorna `StartCopyAsync` per popolare `DestinationsProgress`**
 
-In `Sbroglione/ViewModels/CopyPairsViewModel.cs`, sostituisci (riga 405-407):
+In `FileToolbox/ViewModels/CopyPairsViewModel.cs`, sostituisci (riga 405-407):
 
 ```csharp
             foreach (var item in pair.FilesToProcess)
@@ -733,7 +733,7 @@ con:
 
 - [ ] **Step 2: Scrivi i test per il comportamento nuovo (fallimento parziale + aggregazione)**
 
-Aggiungi in `Sbroglione.Tests/CopyPairsViewModelTests.cs`:
+Aggiungi in `FileToolbox.Tests/CopyPairsViewModelTests.cs`:
 
 ```csharp
 [Fact]
@@ -946,18 +946,18 @@ Nota: `RecomputePairAggregate` usa `Str.CopyPairs.SpeedAveragePeakFormat` con lo
 - [ ] **Step 5: Esegui i test — devono passare**
 
 Run: `dotnet test --filter "FullyQualifiedName~CopyPairsViewModelTests"`
-Expected: Compilazione ancora rotta per `CopyDirectoryAsync`/`DirectoryCopyProgressPublisher` (Task 5) e per l'AXAML (Task 6) — se il progetto Desktop/AXAML non fa parte della build di `Sbroglione.Tests`, la sola `Sbroglione.Tests` può già passare per i test single-file; altrimenti annota il fallimento atteso e prosegui a Task 5 prima di verificare l'intera suite.
+Expected: Compilazione ancora rotta per `CopyDirectoryAsync`/`DirectoryCopyProgressPublisher` (Task 5) e per l'AXAML (Task 6) — se il progetto Desktop/AXAML non fa parte della build di `FileToolbox.Tests`, la sola `FileToolbox.Tests` può già passare per i test single-file; altrimenti annota il fallimento atteso e prosegui a Task 5 prima di verificare l'intera suite.
 
 - [ ] **Step 6: Aggiungi la chiave di localizzazione mancante**
 
-In `Sbroglione/Services/Localization/StringsIt.cs`, vicino a `Str.CopyPairs.VerifyFailedFormat` (riga 145):
+In `FileToolbox/Services/Localization/StringsIt.cs`, vicino a `Str.CopyPairs.VerifyFailedFormat` (riga 145):
 
 ```csharp
         ["Str.CopyPairs.DestinationErrorFormat"] = "Errore: {0}",
         ["Str.CopyPairs.CompletedWithErrorsFormat"] = "Completato con errori ({0}/{1} destinazioni)",
 ```
 
-In `Sbroglione/Services/Localization/StringsEn.cs`, vicino alla riga 141:
+In `FileToolbox/Services/Localization/StringsEn.cs`, vicino alla riga 141:
 
 ```csharp
         ["Str.CopyPairs.DestinationErrorFormat"] = "Error: {0}",
@@ -967,7 +967,7 @@ In `Sbroglione/Services/Localization/StringsEn.cs`, vicino alla riga 141:
 - [ ] **Step 7: Commit**
 
 ```bash
-git add Sbroglione/ViewModels/CopyPairsViewModel.cs Sbroglione/Services/Localization/StringsIt.cs Sbroglione/Services/Localization/StringsEn.cs Sbroglione.Tests/CopyPairsViewModelTests.cs
+git add FileToolbox/ViewModels/CopyPairsViewModel.cs FileToolbox/Services/Localization/StringsIt.cs FileToolbox/Services/Localization/StringsEn.cs FileToolbox.Tests/CopyPairsViewModelTests.cs
 git commit -m "feat: CopySingleFileAsync traccia progresso/velocita/errore per destinazione"
 ```
 
@@ -978,8 +978,8 @@ git commit -m "feat: CopySingleFileAsync traccia progresso/velocita/errore per d
 **Model:** sonnet
 
 **Files:**
-- Modify: `Sbroglione/ViewModels/CopyPairsViewModel.cs:617-816` (`CopyDirectoryAsync` e `DirectoryCopyProgressPublisher`)
-- Test: `Sbroglione.Tests/CopyPairsViewModelTests.cs`
+- Modify: `FileToolbox/ViewModels/CopyPairsViewModel.cs:617-816` (`CopyDirectoryAsync` e `DirectoryCopyProgressPublisher`)
+- Test: `FileToolbox.Tests/CopyPairsViewModelTests.cs`
 
 **Interfaces:**
 - Consumes: `FileCopyService.CopyDirectoryToManyAsync` (Task 2), `PublishDestinationSpeed`/`RecomputePairAggregate`/`AggregatePairState` (Task 4).
@@ -987,7 +987,7 @@ git commit -m "feat: CopySingleFileAsync traccia progresso/velocita/errore per d
 
 - [ ] **Step 1: Aggiorna i due test unitari esistenti sul publisher**
 
-`Sbroglione.Tests/CopyPairsViewModelTests.cs` righe 48-93: il publisher ora scrive su un `DestinationProgressViewModel`, non più direttamente su `pair`.
+`FileToolbox.Tests/CopyPairsViewModelTests.cs` righe 48-93: il publisher ora scrive su un `DestinationProgressViewModel`, non più direttamente su `pair`.
 
 ```csharp
 [Fact]
@@ -1328,12 +1328,12 @@ Sostituisci l'intero blocco `CopyDirectoryAsync` + `DirectoryCopyProgressPublish
 - [ ] **Step 5: Esegui l'intera suite — deve passare**
 
 Run: `dotnet test`
-Expected: PASS (tutti i progetti, `Sbroglione.Tests` incluso)
+Expected: PASS (tutti i progetti, `FileToolbox.Tests` incluso)
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add Sbroglione/ViewModels/CopyPairsViewModel.cs Sbroglione.Tests/CopyPairsViewModelTests.cs
+git add FileToolbox/ViewModels/CopyPairsViewModel.cs FileToolbox.Tests/CopyPairsViewModelTests.cs
 git commit -m "feat: CopyDirectoryAsync e DirectoryCopyProgressPublisher tracciano stato per destinazione"
 ```
 
@@ -1344,18 +1344,18 @@ git commit -m "feat: CopyDirectoryAsync e DirectoryCopyProgressPublisher traccia
 **Model:** haiku
 
 **Files:**
-- Modify: `Sbroglione/Views/CopyPairsView.axaml:188-229`
+- Modify: `FileToolbox/Views/CopyPairsView.axaml:188-229`
 
 **Interfaces:**
-- Consumes: `FolderFilePairViewModel.DestinationsProgress` (Task 3), classi badge esistenti `Border.badge`/`Classes.error` (`Sbroglione/Styles/Controls.axaml`), converter `EnumEquals` già in uso nel file.
+- Consumes: `FolderFilePairViewModel.DestinationsProgress` (Task 3), classi badge esistenti `Border.badge`/`Classes.error` (`FileToolbox/Styles/Controls.axaml`), converter `EnumEquals` già in uso nel file.
 
 - [ ] **Step 1: Verifica manuale pre-modifica (baseline)**
 
-Run: `dotnet build Sbroglione.sln` (deve essere pulita: Task 5 ha già sistemato tutti i riferimenti C#; solo l'AXAML in `CopyPairsView.axaml` referenzia ancora `AllDestinations`/`CopyingFiles` come binding — l'AXAML non causa errori di build C#, ma i binding falliscono silenziosamente a runtime finché non aggiornati in questo task).
+Run: `dotnet build FileToolbox.sln` (deve essere pulita: Task 5 ha già sistemato tutti i riferimenti C#; solo l'AXAML in `CopyPairsView.axaml` referenzia ancora `AllDestinations`/`CopyingFiles` come binding — l'AXAML non causa errori di build C#, ma i binding falliscono silenziosamente a runtime finché non aggiornati in questo task).
 
 - [ ] **Step 2: Sostituisci il blocco del widget**
 
-In `Sbroglione/Views/CopyPairsView.axaml`, sostituisci le righe 188-229 (dal commento `<!-- File in copia adesso, divisi per destinazione -->` alla chiusura del `Border x:Name="CopyingNowWidget"`):
+In `FileToolbox/Views/CopyPairsView.axaml`, sostituisci le righe 188-229 (dal commento `<!-- File in copia adesso, divisi per destinazione -->` alla chiusura del `Border x:Name="CopyingNowWidget"`):
 
 ```xml
                   <!-- File in copia adesso, divisi per destinazione -->
@@ -1417,13 +1417,13 @@ Nota: `x:Name="CopyingNowWidget"` viene rimosso perché non più necessario — 
 
 - [ ] **Step 3: Aggiungi la chiave di localizzazione per il badge errore**
 
-In `Sbroglione/Services/Localization/StringsIt.cs`, vicino a `Str.CopyPairs.CopyingNowHeader` (riga 118):
+In `FileToolbox/Services/Localization/StringsIt.cs`, vicino a `Str.CopyPairs.CopyingNowHeader` (riga 118):
 
 ```csharp
         ["Str.CopyPairs.DestinationErrorBadge"] = "Errore",
 ```
 
-In `Sbroglione/Services/Localization/StringsEn.cs`, vicino alla riga 114:
+In `FileToolbox/Services/Localization/StringsEn.cs`, vicino alla riga 114:
 
 ```csharp
         ["Str.CopyPairs.DestinationErrorBadge"] = "Error",
@@ -1431,10 +1431,10 @@ In `Sbroglione/Services/Localization/StringsEn.cs`, vicino alla riga 114:
 
 - [ ] **Step 4: Build e avvio manuale per verifica visiva**
 
-Run: `dotnet build Sbroglione.sln`
+Run: `dotnet build FileToolbox.sln`
 Expected: build pulita, zero errori.
 
-Run: `dotnet run --project Sbroglione.Desktop` (avvio in background, poi ispezione manuale):
+Run: `dotnet run --project FileToolbox.Desktop` (avvio in background, poi ispezione manuale):
 - Configura una coppia con 2+ destinazioni (una valida, una in un percorso non scrivibile, es. dentro un file esistente).
 - Avvia la copia di una cartella con più file.
 - Verifica: il widget mostra una riga per destinazione, ciascuna con la propria barra di progresso e velocità; la destinazione non scrivibile mostra il badge "Errore" con tooltip; la card di riepilogo passa a stato Error a fine copia.
@@ -1442,7 +1442,7 @@ Run: `dotnet run --project Sbroglione.Desktop` (avvio in background, poi ispezio
 - [ ] **Step 5: Commit**
 
 ```bash
-git add Sbroglione/Views/CopyPairsView.axaml Sbroglione/Services/Localization/StringsIt.cs Sbroglione/Services/Localization/StringsEn.cs
+git add FileToolbox/Views/CopyPairsView.axaml FileToolbox/Services/Localization/StringsIt.cs FileToolbox/Services/Localization/StringsEn.cs
 git commit -m "feat: widget in copia adesso mostra barra/velocita/errore per destinazione"
 ```
 
@@ -1465,7 +1465,7 @@ Expected: PASS, nessuna regressione sui test esistenti (incluse le suite di `Fil
 
 - [ ] **Step 2: Build completa**
 
-Run: `dotnet build Sbroglione.sln`
+Run: `dotnet build FileToolbox.sln`
 Expected: zero errori, zero nuovi warning introdotti (confronta con l'output pre-modifica se necessario).
 
 - [ ] **Step 3: Marca l'idea 25 come completata in `IDEE.md`**

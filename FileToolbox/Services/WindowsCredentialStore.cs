@@ -15,12 +15,32 @@ public sealed class WindowsCredentialStore : ICredentialStore
 
     public bool IsAvailable => true;
 
-    private static string TargetName(Guid profileId) => $"Sbroglione/{profileId:N}";
+    private static string TargetName(Guid profileId) => $"FileToolbox/{profileId:N}";
 
-    public Task<string?> GetPasswordAsync(Guid profileId) => Task.Run(() =>
+    /// <summary>Target usato prima del rename: le password salvate sotto questo nome vengono migrate al primo accesso.</summary>
+    private static string LegacyTargetName(Guid profileId) => $"Sbroglione/{profileId:N}";
+
+    public async Task<string?> GetPasswordAsync(Guid profileId)
     {
-        if (!CredRead(TargetName(profileId), CredTypeGeneric, 0, out IntPtr credentialPtr))
-            return (string?)null;
+        string? password = await Task.Run(() => Read(TargetName(profileId)));
+        if (password is not null)
+            return password;
+
+        // Migrazione: password salvata col nome precedente al rename, la si sposta sul nuovo target.
+        password = await Task.Run(() => Read(LegacyTargetName(profileId)));
+        if (password is not null)
+        {
+            await SetPasswordAsync(profileId, password);
+            await Task.Run(() => CredDelete(LegacyTargetName(profileId), CredTypeGeneric, 0));
+        }
+
+        return password;
+    }
+
+    private static string? Read(string targetName)
+    {
+        if (!CredRead(targetName, CredTypeGeneric, 0, out IntPtr credentialPtr))
+            return null;
 
         try
         {
@@ -44,7 +64,7 @@ public sealed class WindowsCredentialStore : ICredentialStore
         {
             CredFree(credentialPtr);
         }
-    });
+    }
 
     public Task SetPasswordAsync(Guid profileId, string password) => Task.Run(() =>
     {
@@ -79,6 +99,7 @@ public sealed class WindowsCredentialStore : ICredentialStore
     public Task DeletePasswordAsync(Guid profileId) => Task.Run(() =>
     {
         CredDelete(TargetName(profileId), CredTypeGeneric, 0);
+        CredDelete(LegacyTargetName(profileId), CredTypeGeneric, 0);
     });
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]

@@ -4,7 +4,7 @@
 
 **Goal:** Copiare solo i blocchi cambiati (rolling checksum, algoritmo rsync) quando il file di destinazione esiste già, invece di riscrivere l'intero file — IDEE.md punto 5, Fase 1 (solo copia locale/locale, FTP/SFTP fuori scope).
 
-**Architecture:** Nuovo namespace `Sbroglione.Services` con 4 classi: `DeltaCopySignatureBuilder` (hash a blocchi della destinazione esistente), `DeltaCopyScanner` (rolling checksum sulla sorgente, produce istruzioni Copy/Literal), `DeltaCopyApplier` (applica le istruzioni scrivendo un file temporaneo poi rename atomico), `DeltaCopyService` (orchestratore con fallback a full-copy). Integrato come opt-in in `FileCopyService` dietro un nuovo parametro `deltaCopyEnabled`.
+**Architecture:** Nuovo namespace `FileToolbox.Services` con 4 classi: `DeltaCopySignatureBuilder` (hash a blocchi della destinazione esistente), `DeltaCopyScanner` (rolling checksum sulla sorgente, produce istruzioni Copy/Literal), `DeltaCopyApplier` (applica le istruzioni scrivendo un file temporaneo poi rename atomico), `DeltaCopyService` (orchestratore con fallback a full-copy). Integrato come opt-in in `FileCopyService` dietro un nuovo parametro `deltaCopyEnabled`.
 
 **Tech Stack:** .NET 8, `System.Security.Cryptography.SHA256`, `System.IO.FileStream`, xunit.
 
@@ -19,7 +19,7 @@
 - Verify post-copia (`DirectoryVerificationService`) resta invariato, gira sempre dopo indipendentemente dal delta.
 - `CopyJobRecord`/journal: nessuna modifica di schema.
 - Multi-destinazione: ogni destinazione fa la propria scansione indipendente della sorgente (nessun fan-out condiviso con delta attivo).
-- Namespace: tutte le nuove classi in `Sbroglione.Services` (service statici, stesso stile di `FileCopyService`); modelli in `Sbroglione.Models`.
+- Namespace: tutte le nuove classi in `FileToolbox.Services` (service statici, stesso stile di `FileCopyService`); modelli in `FileToolbox.Models`.
 
 ---
 
@@ -28,19 +28,19 @@
 **Model:** opus (matematica del rolling hash: un errore di segno/offset è subdolo e passa i test superficiali)
 
 **Files:**
-- Create: `Sbroglione/Services/RollingChecksum.cs`
-- Test: `Sbroglione.Tests/RollingChecksumTests.cs`
+- Create: `FileToolbox/Services/RollingChecksum.cs`
+- Test: `FileToolbox.Tests/RollingChecksumTests.cs`
 
 **Interfaces:**
-- Produces: `Sbroglione.Services.RollingChecksum` — classe mutabile con `void AddByte(byte value)`, `void Roll(byte outgoing, byte incoming)`, `void Reset()`, `uint Value { get; }`.
+- Produces: `FileToolbox.Services.RollingChecksum` — classe mutabile con `void AddByte(byte value)`, `void Roll(byte outgoing, byte incoming)`, `void Reset()`, `uint Value { get; }`.
 
 - [x] **Step 1: Scrivi i test che falliscono**
 
 ```csharp
-// Sbroglione.Tests/RollingChecksumTests.cs
-using Sbroglione.Services;
+// FileToolbox.Tests/RollingChecksumTests.cs
+using FileToolbox.Services;
 
-namespace Sbroglione.Tests;
+namespace FileToolbox.Tests;
 
 public sealed class RollingChecksumTests
 {
@@ -124,8 +124,8 @@ Expected: FAIL (compile error, `RollingChecksum` non esiste)
 - [x] **Step 3: Implementa**
 
 ```csharp
-// Sbroglione/Services/RollingChecksum.cs
-namespace Sbroglione.Services;
+// FileToolbox/Services/RollingChecksum.cs
+namespace FileToolbox.Services;
 
 /// <summary>
 /// Weak checksum a due livelli per il rolling hash stile rsync: a = somma dei byte,
@@ -189,7 +189,7 @@ Expected: PASS (5/5)
 - [x] **Step 5: Commit**
 
 ```bash
-git add Sbroglione/Services/RollingChecksum.cs Sbroglione.Tests/RollingChecksumTests.cs
+git add FileToolbox/Services/RollingChecksum.cs FileToolbox.Tests/RollingChecksumTests.cs
 git commit -m "feat: add RollingChecksum for delta-copy weak hash"
 ```
 
@@ -200,23 +200,23 @@ git commit -m "feat: add RollingChecksum for delta-copy weak hash"
 **Model:** sonnet (logica standard di I/O a blocchi + hashing, nessuna decisione algoritmica delicata)
 
 **Files:**
-- Create: `Sbroglione/Models/DeltaCopyInstruction.cs`
-- Create: `Sbroglione/Services/DeltaCopySignatureBuilder.cs`
-- Test: `Sbroglione.Tests/DeltaCopySignatureBuilderTests.cs`
+- Create: `FileToolbox/Models/DeltaCopyInstruction.cs`
+- Create: `FileToolbox/Services/DeltaCopySignatureBuilder.cs`
+- Test: `FileToolbox.Tests/DeltaCopySignatureBuilderTests.cs`
 
 **Interfaces:**
 - Consumes: `RollingChecksum` (Task 1).
 - Produces:
-  - `Sbroglione.Models.DeltaCopyInstruction` (abstract record), `CopyBlockInstruction(long DestOffset, int Length)`, `LiteralInstruction(byte[] Data)`.
-  - `Sbroglione.Models.SignatureBlock(long Offset, int Length, byte[] StrongHash)`.
-  - `Sbroglione.Services.DeltaSignature` — `IReadOnlyDictionary<uint, List<SignatureBlock>> BlocksByWeak { get; }`.
-  - `Sbroglione.Services.DeltaCopySignatureBuilder.BuildAsync(string destPath, int blockSizeBytes, CancellationToken ct) -> Task<DeltaSignature>`.
+  - `FileToolbox.Models.DeltaCopyInstruction` (abstract record), `CopyBlockInstruction(long DestOffset, int Length)`, `LiteralInstruction(byte[] Data)`.
+  - `FileToolbox.Models.SignatureBlock(long Offset, int Length, byte[] StrongHash)`.
+  - `FileToolbox.Services.DeltaSignature` — `IReadOnlyDictionary<uint, List<SignatureBlock>> BlocksByWeak { get; }`.
+  - `FileToolbox.Services.DeltaCopySignatureBuilder.BuildAsync(string destPath, int blockSizeBytes, CancellationToken ct) -> Task<DeltaSignature>`.
 
 - [x] **Step 1: Scrivi i modelli**
 
 ```csharp
-// Sbroglione/Models/DeltaCopyInstruction.cs
-namespace Sbroglione.Models;
+// FileToolbox/Models/DeltaCopyInstruction.cs
+namespace FileToolbox.Models;
 
 /// <summary>Istruzione prodotta da <see cref="Services.DeltaCopyScanner"/> per ricostruire il file.</summary>
 public abstract record DeltaCopyInstruction;
@@ -234,10 +234,10 @@ public sealed record SignatureBlock(long Offset, int Length, byte[] StrongHash);
 - [x] **Step 2: Scrivi il test che fallisce**
 
 ```csharp
-// Sbroglione.Tests/DeltaCopySignatureBuilderTests.cs
-using Sbroglione.Services;
+// FileToolbox.Tests/DeltaCopySignatureBuilderTests.cs
+using FileToolbox.Services;
 
-namespace Sbroglione.Tests;
+namespace FileToolbox.Tests;
 
 public sealed class DeltaCopySignatureBuilderTests : IDisposable
 {
@@ -306,11 +306,11 @@ Expected: FAIL (compile error, `DeltaCopySignatureBuilder`/`DeltaSignature` non 
 - [x] **Step 4: Implementa**
 
 ```csharp
-// Sbroglione/Services/DeltaCopySignatureBuilder.cs
+// FileToolbox/Services/DeltaCopySignatureBuilder.cs
 using System.Security.Cryptography;
-using Sbroglione.Models;
+using FileToolbox.Models;
 
-namespace Sbroglione.Services;
+namespace FileToolbox.Services;
 
 /// <summary>Signature della destinazione esistente: hash debole+forte per ciascun blocco fisso.</summary>
 public sealed class DeltaSignature
@@ -374,7 +374,7 @@ Expected: PASS (3/3)
 - [x] **Step 6: Commit**
 
 ```bash
-git add Sbroglione/Models/DeltaCopyInstruction.cs Sbroglione/Services/DeltaCopySignatureBuilder.cs Sbroglione.Tests/DeltaCopySignatureBuilderTests.cs
+git add FileToolbox/Models/DeltaCopyInstruction.cs FileToolbox/Services/DeltaCopySignatureBuilder.cs FileToolbox.Tests/DeltaCopySignatureBuilderTests.cs
 git commit -m "feat: add delta-copy instruction models and signature builder"
 ```
 
@@ -385,21 +385,21 @@ git commit -m "feat: add delta-copy instruction models and signature builder"
 **Model:** opus (cuore dell'algoritmo rsync: gestione shift/EOF/match ha molti edge case, il più a rischio bug silenzioso di tutto il piano)
 
 **Files:**
-- Create: `Sbroglione/Services/DeltaCopyScanner.cs`
-- Test: `Sbroglione.Tests/DeltaCopyScannerTests.cs`
+- Create: `FileToolbox/Services/DeltaCopyScanner.cs`
+- Test: `FileToolbox.Tests/DeltaCopyScannerTests.cs`
 
 **Interfaces:**
 - Consumes: `RollingChecksum` (Task 1), `DeltaSignature`/`SignatureBlock` (Task 2), `DeltaCopySignatureBuilder.ReadFullAsync` (Task 2, `internal`, stesso assembly).
-- Produces: `Sbroglione.Services.DeltaCopyScanner.ScanAsync(string sourcePath, DeltaSignature signature, int blockSizeBytes, CancellationToken ct) -> Task<IReadOnlyList<DeltaCopyInstruction>>`.
+- Produces: `FileToolbox.Services.DeltaCopyScanner.ScanAsync(string sourcePath, DeltaSignature signature, int blockSizeBytes, CancellationToken ct) -> Task<IReadOnlyList<DeltaCopyInstruction>>`.
 
 - [x] **Step 1: Scrivi i test che falliscono**
 
 ```csharp
-// Sbroglione.Tests/DeltaCopyScannerTests.cs
-using Sbroglione.Models;
-using Sbroglione.Services;
+// FileToolbox.Tests/DeltaCopyScannerTests.cs
+using FileToolbox.Models;
+using FileToolbox.Services;
 
-namespace Sbroglione.Tests;
+namespace FileToolbox.Tests;
 
 public sealed class DeltaCopyScannerTests : IDisposable
 {
@@ -532,11 +532,11 @@ Expected: FAIL (compile error, `DeltaCopyScanner` non esiste)
 - [x] **Step 3: Implementa**
 
 ```csharp
-// Sbroglione/Services/DeltaCopyScanner.cs
+// FileToolbox/Services/DeltaCopyScanner.cs
 using System.Security.Cryptography;
-using Sbroglione.Models;
+using FileToolbox.Models;
 
-namespace Sbroglione.Services;
+namespace FileToolbox.Services;
 
 /// <summary>
 /// Scorre la sorgente con una finestra scorrevole di <c>blockSizeBytes</c> byte, cercando
@@ -650,7 +650,7 @@ Expected: PASS (5/5)
 - [x] **Step 5: Commit**
 
 ```bash
-git add Sbroglione/Services/DeltaCopyScanner.cs Sbroglione.Tests/DeltaCopyScannerTests.cs
+git add FileToolbox/Services/DeltaCopyScanner.cs FileToolbox.Tests/DeltaCopyScannerTests.cs
 git commit -m "feat: add DeltaCopyScanner (rsync-style rolling match)"
 ```
 
@@ -661,21 +661,21 @@ git commit -m "feat: add DeltaCopyScanner (rsync-style rolling match)"
 **Model:** sonnet (I/O sequenziale su istruzioni già definite, pattern temp-file+rename già visto altrove nel repo)
 
 **Files:**
-- Create: `Sbroglione/Services/DeltaCopyApplier.cs`
-- Test: `Sbroglione.Tests/DeltaCopyApplierTests.cs`
+- Create: `FileToolbox/Services/DeltaCopyApplier.cs`
+- Test: `FileToolbox.Tests/DeltaCopyApplierTests.cs`
 
 **Interfaces:**
 - Consumes: `DeltaCopyInstruction`/`CopyBlockInstruction`/`LiteralInstruction` (Task 2), `IoThrottleService.WaitAsync` (esistente).
-- Produces: `Sbroglione.Services.DeltaCopyApplier.ApplyAsync(IReadOnlyList<DeltaCopyInstruction> instructions, string oldDestPath, string finalDestPath, Action<long>? onBytesCopied, CancellationToken ct) -> Task`.
+- Produces: `FileToolbox.Services.DeltaCopyApplier.ApplyAsync(IReadOnlyList<DeltaCopyInstruction> instructions, string oldDestPath, string finalDestPath, Action<long>? onBytesCopied, CancellationToken ct) -> Task`.
 
 - [x] **Step 1: Scrivi i test che falliscono**
 
 ```csharp
-// Sbroglione.Tests/DeltaCopyApplierTests.cs
-using Sbroglione.Models;
-using Sbroglione.Services;
+// FileToolbox.Tests/DeltaCopyApplierTests.cs
+using FileToolbox.Models;
+using FileToolbox.Services;
 
-namespace Sbroglione.Tests;
+namespace FileToolbox.Tests;
 
 public sealed class DeltaCopyApplierTests : IDisposable
 {
@@ -763,10 +763,10 @@ Expected: FAIL (compile error, `DeltaCopyApplier` non esiste)
 - [x] **Step 3: Implementa**
 
 ```csharp
-// Sbroglione/Services/DeltaCopyApplier.cs
-using Sbroglione.Models;
+// FileToolbox/Services/DeltaCopyApplier.cs
+using FileToolbox.Models;
 
-namespace Sbroglione.Services;
+namespace FileToolbox.Services;
 
 /// <summary>
 /// Applica le istruzioni prodotte da <see cref="DeltaCopyScanner"/>: scrive un file
@@ -785,7 +785,7 @@ public static class DeltaCopyApplier
         Action<long>? onBytesCopied,
         CancellationToken ct)
     {
-        string tempPath = finalDestPath + ".sbroglione-delta-tmp";
+        string tempPath = finalDestPath + ".filetoolbox-delta-tmp";
         try
         {
             var oldDest = new FileStream(oldDestPath, FileMode.Open, FileAccess.Read, FileShare.Read);
@@ -847,7 +847,7 @@ Expected: PASS (4/4)
 - [x] **Step 5: Commit**
 
 ```bash
-git add Sbroglione/Services/DeltaCopyApplier.cs Sbroglione.Tests/DeltaCopyApplierTests.cs
+git add FileToolbox/Services/DeltaCopyApplier.cs FileToolbox.Tests/DeltaCopyApplierTests.cs
 git commit -m "feat: add DeltaCopyApplier with atomic temp-file rename"
 ```
 
@@ -858,17 +858,17 @@ git commit -m "feat: add DeltaCopyApplier with atomic temp-file rename"
 **Model:** sonnet (orchestrazione lineare di pezzi già testati, regole di fallback esplicite)
 
 **Files:**
-- Create: `Sbroglione/Services/DeltaCopyService.cs`
-- Modify: `Sbroglione/Models/AppSettings.cs` (nuovo campo `DeltaBlockSizeKB`)
-- Test: `Sbroglione.Tests/DeltaCopyServiceTests.cs`
+- Create: `FileToolbox/Services/DeltaCopyService.cs`
+- Modify: `FileToolbox/Models/AppSettings.cs` (nuovo campo `DeltaBlockSizeKB`)
+- Test: `FileToolbox.Tests/DeltaCopyServiceTests.cs`
 
 **Interfaces:**
 - Consumes: `DeltaCopySignatureBuilder.BuildAsync` (Task 2), `DeltaCopyScanner.ScanAsync` (Task 3), `DeltaCopyApplier.ApplyAsync` (Task 4), `AppSettingsStore.Current` (esistente).
-- Produces: `Sbroglione.Services.DeltaCopyService.TryDeltaCopyAsync(string sourcePath, string destPath, Action<long>? onBytesCopied, CancellationToken ct) -> Task<bool>` (usato da Task 6).
+- Produces: `FileToolbox.Services.DeltaCopyService.TryDeltaCopyAsync(string sourcePath, string destPath, Action<long>? onBytesCopied, CancellationToken ct) -> Task<bool>` (usato da Task 6).
 
 - [x] **Step 1: Aggiungi il campo alle impostazioni**
 
-In `Sbroglione/Models/AppSettings.cs`, accanto a `ThrottleMBps`:
+In `FileToolbox/Models/AppSettings.cs`, accanto a `ThrottleMBps`:
 
 ```csharp
     /// <summary>Dimensione del blocco (KB) usato dal delta-copy per il rolling checksum.</summary>
@@ -878,11 +878,11 @@ In `Sbroglione/Models/AppSettings.cs`, accanto a `ThrottleMBps`:
 - [x] **Step 2: Scrivi i test che falliscono**
 
 ```csharp
-// Sbroglione.Tests/DeltaCopyServiceTests.cs
-using Sbroglione.Models;
-using Sbroglione.Services;
+// FileToolbox.Tests/DeltaCopyServiceTests.cs
+using FileToolbox.Models;
+using FileToolbox.Services;
 
-namespace Sbroglione.Tests;
+namespace FileToolbox.Tests;
 
 public sealed class DeltaCopyServiceTests : IDisposable
 {
@@ -976,8 +976,8 @@ Expected: FAIL (compile error, `DeltaCopyService` non esiste)
 - [x] **Step 4: Implementa**
 
 ```csharp
-// Sbroglione/Services/DeltaCopyService.cs
-namespace Sbroglione.Services;
+// FileToolbox/Services/DeltaCopyService.cs
+namespace FileToolbox.Services;
 
 /// <summary>
 /// Orchestratore del delta-copy: se la destinazione esiste ed è abbastanza grande, calcola
@@ -1032,7 +1032,7 @@ Expected: PASS (4/4)
 - [x] **Step 6: Commit**
 
 ```bash
-git add Sbroglione/Services/DeltaCopyService.cs Sbroglione/Models/AppSettings.cs Sbroglione.Tests/DeltaCopyServiceTests.cs
+git add FileToolbox/Services/DeltaCopyService.cs FileToolbox/Models/AppSettings.cs FileToolbox.Tests/DeltaCopyServiceTests.cs
 git commit -m "feat: add DeltaCopyService orchestrator with fallback rules"
 ```
 
@@ -1043,8 +1043,8 @@ git commit -m "feat: add DeltaCopyService orchestrator with fallback rules"
 **Model:** sonnet (modifica di un file esistente sensibile con concorrenza già presente — richiede attenzione ma segue un pattern chiaro dato dal piano)
 
 **Files:**
-- Modify: `Sbroglione/Services/FileCopyService.cs:46` (`CopyFileAsync`), `:102` (`CopyFileToManyAsync`)
-- Test: `Sbroglione.Tests/FileCopyServiceTests.cs` (nuovi casi)
+- Modify: `FileToolbox/Services/FileCopyService.cs:46` (`CopyFileAsync`), `:102` (`CopyFileToManyAsync`)
+- Test: `FileToolbox.Tests/FileCopyServiceTests.cs` (nuovi casi)
 
 **Interfaces:**
 - Consumes: `DeltaCopyService.TryDeltaCopyAsync` (Task 5).
@@ -1052,7 +1052,7 @@ git commit -m "feat: add DeltaCopyService orchestrator with fallback rules"
 
 - [x] **Step 1: Scrivi i test che falliscono**
 
-Aggiungi a `Sbroglione.Tests/FileCopyServiceTests.cs`:
+Aggiungi a `FileToolbox.Tests/FileCopyServiceTests.cs`:
 
 ```csharp
     [Fact]
@@ -1115,7 +1115,7 @@ Expected: FAIL (compile error, overload `deltaCopyEnabled` non esiste)
 
 - [x] **Step 3: Implementa — `CopyFileAsync`**
 
-In `Sbroglione/Services/FileCopyService.cs`, modifica la firma e l'inizio del metodo (riga 46):
+In `FileToolbox/Services/FileCopyService.cs`, modifica la firma e l'inizio del metodo (riga 46):
 
 ```csharp
     public static async Task CopyFileAsync(
@@ -1219,7 +1219,7 @@ Expected: PASS (tutti i test, nessuna regressione)
 - [x] **Step 7: Commit**
 
 ```bash
-git add Sbroglione/Services/FileCopyService.cs Sbroglione.Tests/FileCopyServiceTests.cs
+git add FileToolbox/Services/FileCopyService.cs FileToolbox.Tests/FileCopyServiceTests.cs
 git commit -m "feat: wire delta-copy into CopyFileAsync and CopyFileToManyAsync"
 ```
 
@@ -1230,8 +1230,8 @@ git commit -m "feat: wire delta-copy into CopyFileAsync and CopyFileToManyAsync"
 **Model:** haiku (aggiungere e passare un parametro attraverso firme già note, meccanico)
 
 **Files:**
-- Modify: `Sbroglione/Services/FileCopyService.cs:215` (`CopyDirectoryAsync`), `:302` (`CopyDirectoryToManyAsync`)
-- Test: `Sbroglione.Tests/FileCopyServiceTests.cs` (nuovi casi)
+- Modify: `FileToolbox/Services/FileCopyService.cs:215` (`CopyDirectoryAsync`), `:302` (`CopyDirectoryToManyAsync`)
+- Test: `FileToolbox.Tests/FileCopyServiceTests.cs` (nuovi casi)
 
 **Interfaces:**
 - Consumes: `CopyFileAsync`/`CopyFileToManyAsync` con `deltaCopyEnabled` (Task 6).
@@ -1239,7 +1239,7 @@ git commit -m "feat: wire delta-copy into CopyFileAsync and CopyFileToManyAsync"
 
 - [x] **Step 1: Scrivi i test che falliscono**
 
-Aggiungi a `Sbroglione.Tests/FileCopyServiceTests.cs`:
+Aggiungi a `FileToolbox.Tests/FileCopyServiceTests.cs`:
 
 ```csharp
     [Fact]
@@ -1362,7 +1362,7 @@ Expected: PASS (nessuna regressione)
 - [x] **Step 6: Commit**
 
 ```bash
-git add Sbroglione/Services/FileCopyService.cs Sbroglione.Tests/FileCopyServiceTests.cs
+git add FileToolbox/Services/FileCopyService.cs FileToolbox.Tests/FileCopyServiceTests.cs
 git commit -m "feat: thread deltaCopyEnabled through directory copy methods"
 ```
 
@@ -1373,9 +1373,9 @@ git commit -m "feat: thread deltaCopyEnabled through directory copy methods"
 **Model:** haiku (nuovo campo impostazioni che ricalca esattamente il pattern ThrottleMBps esistente)
 
 **Files:**
-- Modify: `Sbroglione/ViewModels/SettingsViewModel.cs` (nuova proprietà accanto a `ThrottleMBps`, righe 118-129)
-- Modify: `Sbroglione/Views/SettingsView.axaml` (nuovo controllo accanto al blocco throttle, righe 50-63)
-- Modify: `Sbroglione/Services/Localization/StringsEn.cs`, `Sbroglione/Services/Localization/StringsIt.cs`
+- Modify: `FileToolbox/ViewModels/SettingsViewModel.cs` (nuova proprietà accanto a `ThrottleMBps`, righe 118-129)
+- Modify: `FileToolbox/Views/SettingsView.axaml` (nuovo controllo accanto al blocco throttle, righe 50-63)
+- Modify: `FileToolbox/Services/Localization/StringsEn.cs`, `FileToolbox/Services/Localization/StringsIt.cs`
 
 **Interfaces:**
 - Consumes: `AppSettingsStore.Current.DeltaBlockSizeKB` (Task 5).
@@ -1383,13 +1383,13 @@ git commit -m "feat: thread deltaCopyEnabled through directory copy methods"
 
 - [x] **Step 1: Aggiungi le stringhe localizzate**
 
-In `Sbroglione/Services/Localization/StringsEn.cs`, accanto alle chiavi `Str.Settings.*` esistenti per il throttle:
+In `FileToolbox/Services/Localization/StringsEn.cs`, accanto alle chiavi `Str.Settings.*` esistenti per il throttle:
 
 ```csharp
         ["Str.Settings.DeltaBlockSize"] = "Delta-copy block size (KB)",
 ```
 
-In `Sbroglione/Services/Localization/StringsIt.cs`:
+In `FileToolbox/Services/Localization/StringsIt.cs`:
 
 ```csharp
         ["Str.Settings.DeltaBlockSize"] = "Dimensione blocco delta-copy (KB)",
@@ -1399,7 +1399,7 @@ In `Sbroglione/Services/Localization/StringsIt.cs`:
 
 - [x] **Step 2: Aggiungi la proprietà al ViewModel**
 
-In `Sbroglione/ViewModels/SettingsViewModel.cs`, accanto a `ThrottleMBps` (righe 118-129):
+In `FileToolbox/ViewModels/SettingsViewModel.cs`, accanto a `ThrottleMBps` (righe 118-129):
 
 ```csharp
     public int DeltaBlockSizeKB
@@ -1421,7 +1421,7 @@ In `Sbroglione/ViewModels/SettingsViewModel.cs`, accanto a `ThrottleMBps` (righe
 
 - [x] **Step 3: Aggiungi il controllo XAML**
 
-In `Sbroglione/Views/SettingsView.axaml`, subito dopo il blocco del throttle (righe 50-63):
+In `FileToolbox/Views/SettingsView.axaml`, subito dopo il blocco del throttle (righe 50-63):
 
 ```xml
             <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
@@ -1433,13 +1433,13 @@ In `Sbroglione/Views/SettingsView.axaml`, subito dopo il blocco del throttle (ri
 
 - [ ] **Step 4: Verifica manuale** (skipped: no display in this environment; build verified green)
 
-Run: `dotnet build Sbroglione.sln` — deve compilare senza errori.
-Avvia l'app (`dotnet run --project Sbroglione.Desktop`), vai in Impostazioni, verifica che il campo compaia, accetti solo interi ≥1, e che il valore persista dopo riavvio (legge/scrive `AppSettingsStore`).
+Run: `dotnet build FileToolbox.sln` — deve compilare senza errori.
+Avvia l'app (`dotnet run --project FileToolbox.Desktop`), vai in Impostazioni, verifica che il campo compaia, accetti solo interi ≥1, e che il valore persista dopo riavvio (legge/scrive `AppSettingsStore`).
 
 - [x] **Step 5: Commit**
 
 ```bash
-git add Sbroglione/ViewModels/SettingsViewModel.cs Sbroglione/Views/SettingsView.axaml Sbroglione/Services/Localization/StringsEn.cs Sbroglione/Services/Localization/StringsIt.cs
+git add FileToolbox/ViewModels/SettingsViewModel.cs FileToolbox/Views/SettingsView.axaml FileToolbox/Services/Localization/StringsEn.cs FileToolbox/Services/Localization/StringsIt.cs
 git commit -m "feat: add delta-copy block size setting to Impostazioni"
 ```
 
@@ -1450,12 +1450,12 @@ git commit -m "feat: add delta-copy block size setting to Impostazioni"
 **Model:** sonnet (tocca più file collegati — ViewModel, modello persistito, XAML, localizzazione — serve tenere insieme il quadro completo)
 
 **Files:**
-- Modify: `Sbroglione/ViewModels/FolderFilePairViewModel.cs:337` (accanto a `SkipUnchanged`)
-- Modify: `Sbroglione/Models/CopyProfile.cs:20` (accanto a `SkipUnchanged` in `CopyProfilePair`)
-- Modify: `Sbroglione/ViewModels/CopyPairsViewModel.cs` (righe ~234, ~282, ~660, ~835 — vedi sotto)
-- Modify: `Sbroglione/Views/CopyPairsView.axaml:157` (accanto al `CheckBox` di `ClearDestinationBeforeCopy`)
-- Modify: `Sbroglione/Services/Localization/StringsEn.cs`, `Sbroglione/Services/Localization/StringsIt.cs`
-- Test: `Sbroglione.Tests/CopyProfileStoreTests.cs`, `Sbroglione.Tests/CopyPairsViewModelTests.cs` (nuovi casi)
+- Modify: `FileToolbox/ViewModels/FolderFilePairViewModel.cs:337` (accanto a `SkipUnchanged`)
+- Modify: `FileToolbox/Models/CopyProfile.cs:20` (accanto a `SkipUnchanged` in `CopyProfilePair`)
+- Modify: `FileToolbox/ViewModels/CopyPairsViewModel.cs` (righe ~234, ~282, ~660, ~835 — vedi sotto)
+- Modify: `FileToolbox/Views/CopyPairsView.axaml:157` (accanto al `CheckBox` di `ClearDestinationBeforeCopy`)
+- Modify: `FileToolbox/Services/Localization/StringsEn.cs`, `FileToolbox/Services/Localization/StringsIt.cs`
+- Test: `FileToolbox.Tests/CopyProfileStoreTests.cs`, `FileToolbox.Tests/CopyPairsViewModelTests.cs` (nuovi casi)
 
 **Interfaces:**
 - Consumes: `CopyFileToManyAsync`/`CopyDirectoryToManyAsync` con `deltaCopyEnabled` (Task 6, 7).
@@ -1463,13 +1463,13 @@ git commit -m "feat: add delta-copy block size setting to Impostazioni"
 
 - [x] **Step 1: Aggiungi le stringhe localizzate**
 
-`Sbroglione/Services/Localization/StringsEn.cs`, accanto a `Str.CopyPairs.ClearDestination`:
+`FileToolbox/Services/Localization/StringsEn.cs`, accanto a `Str.CopyPairs.ClearDestination`:
 
 ```csharp
         ["Str.CopyPairs.DeltaCopy"] = "Delta-copy (only changed blocks)",
 ```
 
-`Sbroglione/Services/Localization/StringsIt.cs`:
+`FileToolbox/Services/Localization/StringsIt.cs`:
 
 ```csharp
         ["Str.CopyPairs.DeltaCopy"] = "Delta-copy (solo blocchi cambiati)",
@@ -1477,7 +1477,7 @@ git commit -m "feat: add delta-copy block size setting to Impostazioni"
 
 - [x] **Step 2: Aggiungi la proprietà al modello persistito**
 
-In `Sbroglione/Models/CopyProfile.cs`, in `CopyProfilePair` accanto a `SkipUnchanged` (riga 20):
+In `FileToolbox/Models/CopyProfile.cs`, in `CopyProfilePair` accanto a `SkipUnchanged` (riga 20):
 
 ```csharp
     public bool DeltaCopyEnabled { get; set; }
@@ -1485,7 +1485,7 @@ In `Sbroglione/Models/CopyProfile.cs`, in `CopyProfilePair` accanto a `SkipUncha
 
 - [x] **Step 3: Aggiungi la proprietà al ViewModel della pair**
 
-In `Sbroglione/ViewModels/FolderFilePairViewModel.cs`, accanto a `SkipUnchanged` (riga 337):
+In `FileToolbox/ViewModels/FolderFilePairViewModel.cs`, accanto a `SkipUnchanged` (riga 337):
 
 ```csharp
     /// <summary>Se true, per i file già esistenti in destinazione copia solo i blocchi cambiati (rolling checksum).</summary>
@@ -1494,7 +1494,7 @@ In `Sbroglione/ViewModels/FolderFilePairViewModel.cs`, accanto a `SkipUnchanged`
 
 - [x] **Step 4: Scrivi i test che falliscono per la persistenza**
 
-Aggiungi a `Sbroglione.Tests/CopyProfileStoreTests.cs` (segui il pattern dei test esistenti in quel file per save/load roundtrip — cerca un test che salva e ricarica un `CopyProfile` con `SkipUnchanged = true` e usalo come modello):
+Aggiungi a `FileToolbox.Tests/CopyProfileStoreTests.cs` (segui il pattern dei test esistenti in quel file per save/load roundtrip — cerca un test che salva e ricarica un `CopyProfile` con `SkipUnchanged = true` e usalo come modello):
 
 ```csharp
     [Fact]
@@ -1525,7 +1525,7 @@ Expected: FAIL (compile error, `DeltaCopyEnabled` non esiste su `CopyProfilePair
 
 - [x] **Step 6: Wiring salvataggio/caricamento profilo in CopyPairsViewModel**
 
-In `Sbroglione/ViewModels/CopyPairsViewModel.cs`, nel blocco di `SaveProfileAsync` (righe 229-237, dentro il `.Select(p => new CopyProfilePair { ... })`):
+In `FileToolbox/ViewModels/CopyPairsViewModel.cs`, nel blocco di `SaveProfileAsync` (righe 229-237, dentro il `.Select(p => new CopyProfilePair { ... })`):
 
 ```csharp
             .Select(p => new CopyProfilePair
@@ -1586,7 +1586,7 @@ Alla chiamata `FileCopyService.CopyDirectoryToManyAsync` (righe 828-836):
 
 - [x] **Step 8: Aggiungi il checkbox in XAML**
 
-In `Sbroglione/Views/CopyPairsView.axaml`, subito dopo il `CheckBox` di `ClearDestinationBeforeCopy` (righe 157-159):
+In `FileToolbox/Views/CopyPairsView.axaml`, subito dopo il `CheckBox` di `ClearDestinationBeforeCopy` (righe 157-159):
 
 ```xml
                   <CheckBox Content="{DynamicResource Str.CopyPairs.DeltaCopy}"
@@ -1606,13 +1606,13 @@ Expected: PASS (nessuna regressione)
 
 - [ ] **Step 11: Verifica manuale** (skipped: no display in this environment)
 
-Run: `dotnet build Sbroglione.sln && dotnet run --project Sbroglione.Desktop`
+Run: `dotnet build FileToolbox.sln && dotnet run --project FileToolbox.Desktop`
 Nella tab Copia: aggiungi una coppia, spunta "Delta-copy", copia una cartella con un file grande (>1 blocco) già esistente in destinazione con una piccola modifica, verifica che il risultato sia byte-identico alla sorgente e che il salvataggio/caricamento profilo mantenga lo stato del checkbox.
 
 - [x] **Step 12: Commit**
 
 ```bash
-git add Sbroglione/ViewModels/FolderFilePairViewModel.cs Sbroglione/Models/CopyProfile.cs Sbroglione/ViewModels/CopyPairsViewModel.cs Sbroglione/Views/CopyPairsView.axaml Sbroglione/Services/Localization/StringsEn.cs Sbroglione/Services/Localization/StringsIt.cs Sbroglione.Tests/CopyProfileStoreTests.cs
+git add FileToolbox/ViewModels/FolderFilePairViewModel.cs FileToolbox/Models/CopyProfile.cs FileToolbox/ViewModels/CopyPairsViewModel.cs FileToolbox/Views/CopyPairsView.axaml FileToolbox/Services/Localization/StringsEn.cs FileToolbox/Services/Localization/StringsIt.cs FileToolbox.Tests/CopyProfileStoreTests.cs
 git commit -m "feat: expose delta-copy toggle per copy pair with profile persistence"
 ```
 
